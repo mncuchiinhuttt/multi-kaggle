@@ -82,6 +82,7 @@ export const SettingsTab: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Form + Bot Guide Integration */}
         <form onSubmit={handleSave} className="lg:col-span-2 border border-border bg-card p-6 sm:p-8 space-y-6">
           <div className="space-y-2">
             <label className="block text-xs font-mono font-medium text-foreground uppercase tracking-wider flex items-center justify-between">
@@ -112,17 +113,36 @@ export const SettingsTab: React.FC = () => {
             <input type="number" min="10" max="600" value={pollingInterval} onChange={(e) => setPollingInterval(e.target.value)} className="w-full border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono" />
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-border">
-            {saved ? <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono"><CheckCircle2 className="h-4 w-4" /> CONFIGURATION SAVED TO SQLITE</span> : <span />}
-            <button type="submit" className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground px-5 py-2.5 text-xs font-mono font-medium uppercase tracking-wider transition-colors shadow-sm">
-              <Send className="h-3.5 w-3.5" /> Save Configuration
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setShowGuide(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-mono font-semibold uppercase text-primary hover:text-primary-hover border border-primary/30 hover:border-primary/60 bg-primary/5 transition-colors self-start sm:self-auto"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              Open Bot Setup Guide
             </button>
+
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              {saved && (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono">
+                  <CheckCircle2 className="h-4 w-4" /> SAVED
+                </span>
+              )}
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground px-5 py-2.5 text-xs font-mono font-medium uppercase tracking-wider transition-colors shadow-sm"
+              >
+                <Send className="h-3.5 w-3.5" /> Save Configuration
+              </button>
+            </div>
           </div>
         </form>
 
+        {/* Right Column: System Info + Telegram Commands Reference */}
         <div className="space-y-4">
           <AppInfoSection versionInfo={versionInfo} checkingUpdate={checkingUpdate} onCheckUpdate={handleCheckUpdate} />
-          <SettingsSidebar onOpenGuide={() => setShowGuide(true)} />
+          <SettingsSidebar />
         </div>
       </div>
 
