@@ -12,7 +12,7 @@ const HELP_TEXT = `
 Multi-Kaggle CLI - Lightweight Kaggle multi-account manager & dispatcher
 
 Usage:
-  multikaggle [serve] [--port 3000] [--no-open]   Launch Web UI Dashboard & API daemon
+  multikaggle [serve] [--port 7890] [--no-open]   Launch Web UI Dashboard & API daemon
   multikaggle run <file.ipynb|file.py> [options]  Dispatch notebook to Kaggle
   multikaggle accounts [list]                     List configured accounts & quotas
   multikaggle accounts add [options]              Add new Kaggle account credentials
@@ -32,7 +32,6 @@ async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
-  // Default behavior when typing bare 'multikaggle' or 'multikaggle serve' -> Launch Web UI
   if (!command || command === "serve" || command === "ui" || command === "web") {
     const { values } = parseArgs({
       args: command ? args.slice(1) : args,

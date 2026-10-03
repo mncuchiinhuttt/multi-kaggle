@@ -7,7 +7,7 @@ export interface ServeOptions {
 }
 
 export async function handleServeCommand(options: ServeOptions): Promise<void> {
-  const port = options.port || Number(process.env.PORT || 3000);
+  const port = options.port || Number(process.env.PORT || 7890);
   const { app } = createApp();
 
   const url = `http://localhost:${port}`;

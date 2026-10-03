@@ -7,6 +7,10 @@ import {
   readLocalKaggleCredentials,
   startKaggleCliLogin,
 } from "@/services/cli-auth-service";
+import {
+  buildKaggleOAuthUrl,
+  handleKaggleOAuthCallback,
+} from "@/services/native-oauth-service";
 
 const CreateAccountSchema = z.object({
   label: z.string().min(1, "Label is required"),
@@ -19,6 +23,58 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
   app.get("/api/accounts", (c) => {
     const accounts = accountService.getAll();
     return c.json({ ok: true, data: accounts });
+  });
+
+  // Direct Browser OAuth Link generator (e.g. for any browser or private window)
+  app.get("/api/oauth/url", (c) => {
+    const host = c.req.header("host") || "localhost:7890";
+    const info = buildKaggleOAuthUrl(host);
+    return c.json({ ok: true, data: info });
+  });
+
+  // Direct OAuth redirect endpoint (e.g. user visits localhost:7890/auth)
+  app.get("/auth", (c) => {
+    const host = c.req.header("host") || "localhost:7890";
+    const info = buildKaggleOAuthUrl(host);
+    return c.redirect(info.authUrl);
+  });
+
+  // OAuth Callback endpoint where Kaggle redirects back with code & state
+  app.get("/api/oauth/callback", async (c) => {
+    const code = c.req.query("code");
+    const state = c.req.query("state");
+
+    if (!code || !state) {
+      return c.html(`
+        <html><body style="font-family:sans-serif;padding:40px;background:#09090b;color:#fff;text-align:center;">
+          <h2 style="color:#ef4444;">Authentication Failed</h2>
+          <p>Missing code or state parameters from Kaggle.</p>
+          <a href="/" style="color:#f6821f;">Return to Dashboard</a>
+        </body></html>
+      `, 400);
+    }
+
+    const result = await handleKaggleOAuthCallback(code, state, accountService);
+    if (!result.ok) {
+      return c.html(`
+        <html><body style="font-family:sans-serif;padding:40px;background:#09090b;color:#fff;text-align:center;">
+          <h2 style="color:#ef4444;">Authentication Error</h2>
+          <p>${result.error}</p>
+          <a href="/" style="color:#f6821f;">Return to Dashboard</a>
+        </body></html>
+      `, 500);
+    }
+
+    return c.html(`
+      <html><body style="font-family:sans-serif;padding:40px;background:#09090b;color:#fff;text-align:center;">
+        <h2 style="color:#10b981;">Authentication Successful!</h2>
+        <p>Account <strong>@${result.username}</strong> has been added to Multi-Kaggle.</p>
+        <p>You can close this tab and return to the dashboard.</p>
+        <script>
+          setTimeout(() => { window.location.href = '/'; }, 2000);
+        </script>
+      </body></html>
+    `);
   });
 
   app.get("/api/accounts/cli-status", async (c) => {
@@ -35,7 +91,6 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
     });
   });
 
-  // Launch 'kaggle auth login --force' in browser with 1 click
   app.post("/api/accounts/cli-login", async (c) => {
     const installed = await isKaggleCliInstalled();
     if (!installed) {
@@ -45,7 +100,6 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
     return c.json(result);
   });
 
-  // Import detected ~/.kaggle credentials, then clear local ~/.kaggle for next login
   app.post("/api/accounts/cli-import", async (c) => {
     const creds = readLocalKaggleCredentials();
     if (!creds) {

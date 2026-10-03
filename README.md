@@ -27,14 +27,21 @@ Chỉ cần gõ:
 ```bash
 multikaggle
 ```
-*(Lệnh này tự động khởi động server daemon nền và mở ngay trình duyệt tại `http://localhost:3000`)*.
+*(Lệnh này tự động khởi động server daemon nền và mở ngay trình duyệt tại `http://localhost:7890`)*.
 
-Nếu muốn chỉ định port:
+Nếu muốn chỉ định port khác:
 ```bash
 multikaggle serve --port 8080 --no-open
 ```
 
-### B. Điều phối Notebook từ CLI (cho AI Agent hoặc Terminal)
+### B. Direct Browser OAuth Authentication
+Người dùng có thể đăng nhập bất kỳ tài khoản Kaggle nào thông qua trình duyệt khác hoặc cửa sổ ẩn danh (Incognito) bằng cách truy cập:
+```
+http://localhost:7890/auth
+```
+Hệ thống sẽ tự động chuyển hướng đến trang xác thực OAuth của Kaggle và tự động callback về ứng dụng để thêm tài khoản vào danh sách.
+
+### C. Điều phối Notebook từ CLI (cho AI Agent hoặc Terminal)
 ```bash
 # Nộp notebook, tự động chọn acc còn nhiều GPU quota nhất
 multikaggle run ./my_notebook.ipynb --title "Train Model Stage 1"
@@ -46,7 +53,7 @@ multikaggle run ./pipeline.ipynb --json
 multikaggle run ./script.py --no-gpu --no-internet
 ```
 
-### C. Quản lý tài khoản & Jobs qua CLI
+### D. Quản lý tài khoản & Jobs qua CLI
 ```bash
 # Xem danh sách tài khoản, trạng thái & GPU hours còn lại
 multikaggle accounts
@@ -65,6 +72,8 @@ multikaggle cancel <job_id>
 
 ## 3. Tính năng cốt lõi
 
+- **Cổng mặc định**: `http://localhost:7890` (tránh xung đột với các web server cổng 3000 khác).
+- **Direct OAuth URL**: Hỗ trợ endpoint `/auth` cho phép mở link ở bất kỳ trình duyệt nào.
 - **Zero-Python Dependency**: Gọi trực tiếp Kaggle REST API v1 với Basic Auth và native Proxy.
 - **Bảo mật**: Mã hóa Kaggle API Tokens bằng **AES-256-GCM** trước khi lưu vào SQLite cục bộ (`bun:sqlite`).
 - **GPU Farm & Quota Optimization**:
@@ -80,4 +89,4 @@ multikaggle cancel <job_id>
 - **Web Dashboard**:
   - Giao diện Full-Width chuẩn **Cloudflare Tech & ShadcnBlocks**.
   - Hỗ trợ đầy đủ **Light / Dark Mode**.
-  - Có tab **System Settings** tích hợp kiểm tra phiên bản và thông báo cập nhật GitHub Release tự động.
+  - Tích hợp kiểm tra phiên bản và thông báo cập nhật GitHub Release tự động.
