@@ -9,6 +9,8 @@ export interface Account {
   username: string;
   proxyUrl: string | null;
   gpuHoursRemaining: number;
+  tpuHoursRemaining?: number;
+  diskQuotaGb?: number;
   status: "active" | "invalid" | "rate_limited";
 }
 

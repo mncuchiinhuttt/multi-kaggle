@@ -55,7 +55,6 @@ export class PollerService {
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - job.start_time) / 1000);
 
-      // If status changed to running
       if (statusRes.status === "running" && job.status === "queued") {
         this.db.run(
           "UPDATE jobs SET status = 'running', duration_seconds = ? WHERE id = ?",
@@ -66,32 +65,36 @@ export class PollerService {
           elapsedSeconds,
           job.id,
         ]);
-        // Deduct GPU usage if GPU was enabled
-        if (job.is_gpu === 1) {
-          const deltaSeconds = elapsedSeconds - job.duration_seconds;
-          if (deltaSeconds > 0) {
-            this.accountService.updateQuota(job.account_id, deltaSeconds);
+
+        const deltaSeconds = elapsedSeconds - job.duration_seconds;
+        if (deltaSeconds > 0) {
+          if (job.is_tpu === 1) {
+            this.accountService.updateQuota(job.account_id, deltaSeconds, "tpu");
+          } else if (job.is_gpu === 1) {
+            this.accountService.updateQuota(job.account_id, deltaSeconds, "gpu");
           }
         }
       }
 
-      // If finished (complete or error)
       if (
         statusRes.status === "complete" ||
         statusRes.status === "error" ||
         statusRes.status === "cancelled"
       ) {
         let logPreview: string | null = null;
+        let outputUrlsJson: string | null = null;
+
         try {
           const outputRes = await client.getKernelOutput(job.kernel_slug);
           logPreview = outputRes.log || null;
-        } catch {
-          // ignore output fetching error
-        }
+          if (outputRes.files && outputRes.files.length > 0) {
+            outputUrlsJson = JSON.stringify(outputRes.files);
+          }
+        } catch {}
 
         this.db.run(
           `UPDATE jobs 
-           SET status = ?, end_time = ?, duration_seconds = ?, error_message = ?, log_preview = ? 
+           SET status = ?, end_time = ?, duration_seconds = ?, error_message = ?, log_preview = ?, output_urls = ? 
            WHERE id = ?`,
           [
             statusRes.status,
@@ -99,11 +102,11 @@ export class PollerService {
             elapsedSeconds,
             statusRes.failureMessage || null,
             logPreview,
+            outputUrlsJson,
             job.id,
           ]
         );
 
-        // Send alert
         await this.notifier.sendNotification({
           status: statusRes.status,
           accountLabel: account.label,
@@ -115,8 +118,6 @@ export class PollerService {
           logPreview,
         });
       }
-    } catch {
-      // Keep going for next jobs if one fails
-    }
+    } catch {}
   }
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Play, Cpu, Wifi } from "lucide-react";
+import { Play, Wifi } from "lucide-react";
 import type { Account } from "./AccountsTab";
+import { AcceleratorSelector } from "./AcceleratorSelector";
 import { CustomSelect } from "./CustomSelect";
 import { DispatchDropzone } from "./DispatchDropzone";
 import { StrategySelector } from "./StrategySelector";
@@ -14,7 +15,7 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
   const [title, setTitle] = useState("");
   const [strategy, setStrategy] = useState<"max_quota" | "round_robin" | "manual">("max_quota");
   const [targetAccountId, setTargetAccountId] = useState("");
-  const [isGpu, setIsGpu] = useState(true);
+  const [accelerator, setAccelerator] = useState<"gpu" | "tpu" | "cpu">("gpu");
   const [enableInternet, setEnableInternet] = useState(true);
   const [notebookContent, setNotebookContent] = useState("");
   const [fileName, setFileName] = useState("");
@@ -53,7 +54,8 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
           kernelType: fileName.endsWith(".py") ? "script" : "notebook",
           strategy,
           targetAccountId: strategy === "manual" ? targetAccountId : undefined,
-          isGpu,
+          isGpu: accelerator === "gpu",
+          isTpu: accelerator === "tpu",
           enableInternet,
         }),
       });
@@ -78,7 +80,7 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
   const accountOptions = accounts.map((a) => ({
     value: a.id,
     label: `${a.label} (@${a.username})`,
-    sublabel: `${a.gpuHoursRemaining.toFixed(1)}h GPU remaining`,
+    sublabel: `${(a.gpuHoursRemaining ?? 30).toFixed(1)}h GPU, ${(a.tpuHoursRemaining ?? 20).toFixed(1)}h TPU`,
   }));
 
   return (
@@ -145,27 +147,13 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border">
-          <label className="flex items-center justify-between p-3.5 border border-border bg-background cursor-pointer hover:border-primary/50 transition-colors select-none">
-            <div className="flex items-center gap-2.5">
-              <Cpu className="h-4 w-4 text-primary" />
-              <div>
-                <div className="text-xs font-mono font-medium text-foreground">ACCELERATOR (T4 / P100)</div>
-                <div className="text-[10px] text-muted-foreground">Provision Kaggle GPU compute environment</div>
-              </div>
-            </div>
-            <input type="checkbox" checked={isGpu} onChange={(e) => setIsGpu(e.target.checked)} className="accent-primary h-4 w-4" />
-          </label>
+        <AcceleratorSelector accelerator={accelerator} onSelect={setAccelerator} />
 
-          <label className="flex items-center justify-between p-3.5 border border-border bg-background cursor-pointer hover:border-primary/50 transition-colors select-none">
-            <div className="flex items-center gap-2.5">
-              <Wifi className="h-4 w-4 text-primary" />
-              <div>
-                <div className="text-xs font-mono font-medium text-foreground">INTERNET ACCESS</div>
-                <div className="text-[10px] text-muted-foreground">Allow pip install & external network fetch</div>
-              </div>
-            </div>
+        <div className="flex items-center justify-between p-3.5 border border-border bg-background select-none font-mono text-xs">
+          <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" checked={enableInternet} onChange={(e) => setEnableInternet(e.target.checked)} className="accent-primary h-4 w-4" />
+            <Wifi className="h-4 w-4 text-primary" />
+            <span>ENABLE INTERNET ACCESS (Pip install & Web APIs)</span>
           </label>
         </div>
 

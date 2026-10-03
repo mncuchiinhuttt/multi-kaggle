@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Terminal, StopCircle, RefreshCw, Layers } from "lucide-react";
+import { Terminal, StopCircle, RefreshCw, Download } from "lucide-react";
+import { OutputsModal } from "./OutputsModal";
 
 export interface Job {
   id: string;
@@ -7,11 +8,13 @@ export interface Job {
   kernel_slug: string;
   title: string;
   is_gpu: number;
+  is_tpu?: number;
   status: "queued" | "running" | "complete" | "error" | "cancelled";
   start_time: number;
   duration_seconds: number;
   error_message: string | null;
   log_preview: string | null;
+  output_urls: string | null;
 }
 
 interface JobsTabProps {
@@ -21,6 +24,8 @@ interface JobsTabProps {
 
 export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
   const [selectedLog, setSelectedLog] = useState<string | null>(null);
+  const [selectedOutputs, setSelectedOutputs] = useState<Array<{ name: string; url: string; size?: number }> | null>(null);
+  const [loadingOutputs, setLoadingOutputs] = useState<string | null>(null);
 
   const handleCancel = async (id: string) => {
     if (confirm("Cancel this running kernel on Kaggle?")) {
@@ -29,44 +34,40 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
     }
   };
 
+  const handleFetchOutputs = async (job: Job) => {
+    setLoadingOutputs(job.id);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/outputs`);
+      const data = await res.json();
+      if (data.ok && data.data?.files && data.data.files.length > 0) {
+        setSelectedOutputs(data.data.files);
+      } else {
+        alert("No generated output files found for this run.");
+      }
+    } catch {
+      alert("Failed to fetch output files.");
+    } finally {
+      setLoadingOutputs(null);
+    }
+  };
+
   const getStatusBadge = (status: Job["status"]) => {
     switch (status) {
       case "running":
-        return (
-          <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            RUNNING
-          </span>
-        );
+        return <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30">RUNNING</span>;
       case "complete":
-        return (
-          <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-            COMPLETE
-          </span>
-        );
+        return <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">COMPLETE</span>;
       case "error":
-        return (
-          <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-destructive/10 text-destructive border-destructive/30">
-            ERROR
-          </span>
-        );
+        return <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-destructive/10 text-destructive border-destructive/30">ERROR</span>;
       case "cancelled":
-        return (
-          <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-secondary text-muted-foreground border border-border">
-            CANCELLED
-          </span>
-        );
+        return <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-secondary text-muted-foreground border border-border">CANCELLED</span>;
       default:
-        return (
-          <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-            QUEUED
-          </span>
-        );
+        return <span className="px-1.5 py-0.5 text-[11px] font-mono uppercase bg-blue-500/10 text-blue-500 border border-blue-500/30">QUEUED</span>;
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
@@ -88,7 +89,6 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
         </button>
       </div>
 
-      {/* Table Container */}
       <div className="border border-border bg-card overflow-x-auto">
         <table className="w-full text-left text-xs text-muted-foreground">
           <thead className="bg-secondary/50 font-mono text-[11px] uppercase text-muted-foreground border-b border-border select-none">
@@ -118,7 +118,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
                   <td className="px-4 py-3">{getStatusBadge(job.status)}</td>
                   <td className="px-4 py-3">
                     <span className="text-[11px] px-1.5 py-0.5 bg-secondary text-foreground border border-border">
-                      {job.is_gpu ? "GPU T4/P100" : "CPU"}
+                      {job.is_tpu ? "TPU v3-8" : job.is_gpu ? "GPU T4/P100" : "CPU"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-foreground font-medium">
@@ -131,16 +131,26 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
                     {job.log_preview && (
                       <button
                         onClick={() => setSelectedLog(job.log_preview)}
-                        className="inline-flex items-center gap-1 text-primary hover:text-primary-hover uppercase text-[11px] font-medium"
+                        className="inline-flex items-center gap-1 text-primary hover:underline uppercase text-[11px] font-medium"
                       >
                         <Terminal className="h-3 w-3" />
                         LOGS
                       </button>
                     )}
+                    {job.status === "complete" && (
+                      <button
+                        onClick={() => handleFetchOutputs(job)}
+                        disabled={loadingOutputs === job.id}
+                        className="inline-flex items-center gap-1 text-emerald-500 hover:underline uppercase text-[11px] font-medium"
+                      >
+                        <Download className="h-3 w-3" />
+                        {loadingOutputs === job.id ? "PULLING..." : "OUTPUTS"}
+                      </button>
+                    )}
                     {(job.status === "running" || job.status === "queued") && (
                       <button
                         onClick={() => handleCancel(job.id)}
-                        className="inline-flex items-center gap-1 text-destructive hover:text-destructive/80 uppercase text-[11px] font-medium"
+                        className="inline-flex items-center gap-1 text-destructive hover:underline uppercase text-[11px] font-medium"
                       >
                         <StopCircle className="h-3 w-3" />
                         ABORT
@@ -154,7 +164,6 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
         </table>
       </div>
 
-      {/* Log Modal Terminal */}
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
           <div className="w-full max-w-3xl border border-border bg-card p-4 space-y-3 shadow-2xl flex flex-col max-h-[85vh]">
@@ -175,6 +184,10 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
             </pre>
           </div>
         </div>
+      )}
+
+      {selectedOutputs && (
+        <OutputsModal outputs={selectedOutputs} onClose={() => setSelectedOutputs(null)} />
       )}
     </div>
   );

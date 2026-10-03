@@ -10,6 +10,7 @@ import { AccountService } from "@/services/account-service";
 import { KernelService } from "@/services/kernel-service";
 import { PollerService } from "@/services/poller-service";
 import { registerAccountRoutes } from "./account-routes";
+import { registerDatasetRoutes } from "./dataset-routes";
 import { registerJobRoutes } from "./job-routes";
 import { registerSettingsRoutes } from "./settings-routes";
 
@@ -60,7 +61,8 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
 
   // Register domain APIs
   registerAccountRoutes(app, accountService);
-  registerJobRoutes(app, kernelService);
+  registerJobRoutes(app, kernelService, accountService);
+  registerDatasetRoutes(app, accountService);
   registerSettingsRoutes(app, db);
 
   // Serve static frontend build if present

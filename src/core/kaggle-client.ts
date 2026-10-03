@@ -67,7 +67,8 @@ export class KaggleApiClient {
         language: input.language ?? "python",
         kernelType: input.kernelType ?? "notebook",
         isPrivate: input.isPrivate ?? true,
-        enableGpu: input.enableGpu ?? true,
+        enableGpu: input.enableGpu ?? false,
+        enableTpu: input.enableTpu ?? false,
         enableInternet: input.enableInternet ?? true,
         datasetDataSources: input.datasetDataSources ?? [],
         competitionSources: input.competitionSources ?? [],
@@ -140,10 +141,34 @@ export class KaggleApiClient {
       const parseResult = KernelOutputSchema.safeParse(rawJson);
       if (!parseResult.success) return { log: "Failed to parse Kaggle output format", files: [] };
 
-      return { log: parseResult.data.log ?? "", files: parseResult.data.files ?? [] };
+      const files = (parseResult.data.files ?? []).map((f) => ({
+        name: f.name || f.fileName || "output_file",
+        url: f.url,
+        size: f.size,
+      }));
+
+      return { log: parseResult.data.log ?? "", files };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       return { log: `Error: ${msg}`, files: [] };
+    }
+  }
+
+  async listDatasets(search = ""): Promise<Array<{ ref: string; title: string; size: string }>> {
+    try {
+      const res = await this.request(
+        `/datasets/list?mine=true&search=${encodeURIComponent(search)}&pageSize=20`,
+        { method: "GET" }
+      );
+      if (!res.ok) return [];
+      const list = (await res.json()) as Array<{ ref?: string; title?: string; totalBytes?: number }>;
+      return list.map((d) => ({
+        ref: d.ref || "",
+        title: d.title || "",
+        size: d.totalBytes ? `${Math.round(d.totalBytes / 1024 / 1024)} MB` : "N/A",
+      }));
+    } catch {
+      return [];
     }
   }
 }

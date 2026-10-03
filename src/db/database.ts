@@ -10,6 +10,8 @@ export interface AccountRecord {
   api_key_iv: string;
   proxy_url: string | null;
   gpu_hours_remaining: number;
+  tpu_hours_remaining: number;
+  disk_quota_gb: number;
   status: "active" | "invalid" | "rate_limited";
   created_at: number;
   updated_at: number;
@@ -23,6 +25,7 @@ export interface JobRecord {
   language: string;
   kernel_type: "notebook" | "script";
   is_gpu: number;
+  is_tpu: number;
   enable_internet: number;
   status: "queued" | "running" | "complete" | "error" | "cancelled";
   start_time: number;
@@ -57,11 +60,21 @@ export function initDatabase(dbPath = "data/multi-kaggle.db"): Database {
       api_key_iv TEXT NOT NULL,
       proxy_url TEXT,
       gpu_hours_remaining REAL DEFAULT 30.0,
+      tpu_hours_remaining REAL DEFAULT 20.0,
+      disk_quota_gb REAL DEFAULT 100.0,
       status TEXT CHECK(status IN ('active', 'invalid', 'rate_limited')) DEFAULT 'active',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
   `);
+
+  // Migrate accounts table if columns are missing
+  try {
+    db.run("ALTER TABLE accounts ADD COLUMN tpu_hours_remaining REAL DEFAULT 20.0;");
+  } catch {}
+  try {
+    db.run("ALTER TABLE accounts ADD COLUMN disk_quota_gb REAL DEFAULT 100.0;");
+  } catch {}
 
   db.run(`
     CREATE TABLE IF NOT EXISTS jobs (
@@ -72,6 +85,7 @@ export function initDatabase(dbPath = "data/multi-kaggle.db"): Database {
       language TEXT DEFAULT 'python',
       kernel_type TEXT CHECK(kernel_type IN ('notebook', 'script')) DEFAULT 'notebook',
       is_gpu INTEGER DEFAULT 1,
+      is_tpu INTEGER DEFAULT 0,
       enable_internet INTEGER DEFAULT 1,
       status TEXT CHECK(status IN ('queued', 'running', 'complete', 'error', 'cancelled')) DEFAULT 'queued',
       start_time INTEGER NOT NULL,
@@ -83,6 +97,10 @@ export function initDatabase(dbPath = "data/multi-kaggle.db"): Database {
       created_at INTEGER NOT NULL
     );
   `);
+
+  try {
+    db.run("ALTER TABLE jobs ADD COLUMN is_tpu INTEGER DEFAULT 0;");
+  } catch {}
 
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (

@@ -7,6 +7,7 @@ export interface PushKernelInput {
   language?: "python";
   isPrivate?: boolean;
   enableGpu?: boolean;
+  enableTpu?: boolean;
   enableInternet?: boolean;
   datasetDataSources?: string[];
   competitionSources?: string[];
@@ -20,7 +21,14 @@ export interface KernelStatusResponse {
 
 export interface KernelOutputResponse {
   log: string;
-  files: Array<{ name: string; url: string }>;
+  files: Array<{ name: string; url: string; size?: number }>;
+}
+
+export interface CreateDatasetInput {
+  title: string;
+  slug?: string;
+  isPrivate?: boolean;
+  files: Array<{ name: string; content: string | Buffer }>;
 }
 
 export const KernelStatusSchema = z.object({
@@ -33,8 +41,10 @@ export const KernelOutputSchema = z.object({
   files: z
     .array(
       z.object({
-        name: z.string(),
+        name: z.string().optional(),
+        fileName: z.string().optional(),
         url: z.string(),
+        size: z.number().optional(),
       })
     )
     .optional(),

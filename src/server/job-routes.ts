@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { KernelService } from "@/services/kernel-service";
+import type { AccountService } from "@/services/account-service";
 
 const DispatchSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -10,10 +11,15 @@ const DispatchSchema = z.object({
   strategy: z.enum(["manual", "max_quota", "round_robin"]).optional(),
   targetAccountId: z.string().optional(),
   isGpu: z.boolean().optional(),
+  isTpu: z.boolean().optional(),
   enableInternet: z.boolean().optional(),
 });
 
-export function registerJobRoutes(app: Hono, kernelService: KernelService): void {
+export function registerJobRoutes(
+  app: Hono,
+  kernelService: KernelService,
+  accountService?: AccountService
+): void {
   app.get("/api/jobs", (c) => {
     const accountId = c.req.query("accountId") ?? undefined;
     const limit = Number(c.req.query("limit") || "50");
@@ -24,10 +30,28 @@ export function registerJobRoutes(app: Hono, kernelService: KernelService): void
   app.get("/api/jobs/:id", (c) => {
     const id = c.req.param("id");
     const job = kernelService.getJobById(id);
-    if (!job) {
-      return c.json({ ok: false, error: "Job not found" }, 404);
-    }
+    if (!job) return c.json({ ok: false, error: "Job not found" }, 404);
     return c.json({ ok: true, data: job });
+  });
+
+  // Fetch real-time output files and download URLs for a job
+  app.get("/api/jobs/:id/outputs", async (c) => {
+    const id = c.req.param("id");
+    const job = kernelService.getJobById(id);
+    if (!job) return c.json({ ok: false, error: "Job not found" }, 404);
+
+    if (!accountService) {
+      return c.json({ ok: true, data: { log: job.log_preview || "", files: [] } });
+    }
+
+    try {
+      const client = accountService.getClientForAccount(job.account_id);
+      const output = await client.getKernelOutput(job.kernel_slug);
+      return c.json({ ok: true, data: output });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch outputs";
+      return c.json({ ok: false, error: msg }, 500);
+    }
   });
 
   app.post("/api/jobs/dispatch", async (c) => {
@@ -39,9 +63,7 @@ export function registerJobRoutes(app: Hono, kernelService: KernelService): void
       }
 
       const result = await kernelService.dispatch(parsed.data);
-      if (!result.ok) {
-        return c.json({ ok: false, error: result.error }, 400);
-      }
+      if (!result.ok) return c.json({ ok: false, error: result.error }, 400);
       return c.json({ ok: true, data: result.job }, 201);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Dispatch failed";

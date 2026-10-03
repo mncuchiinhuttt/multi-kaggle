@@ -16,6 +16,8 @@ export interface PublicAccount {
   username: string;
   proxyUrl: string | null;
   gpuHoursRemaining: number;
+  tpuHoursRemaining: number;
+  diskQuotaGb: number;
   status: "active" | "invalid" | "rate_limited";
   createdAt: number;
   updatedAt: number;
@@ -37,7 +39,9 @@ export class AccountService {
       label: r.label,
       username: r.username,
       proxyUrl: r.proxy_url,
-      gpuHoursRemaining: r.gpu_hours_remaining,
+      gpuHoursRemaining: r.gpu_hours_remaining ?? 30.0,
+      tpuHoursRemaining: r.tpu_hours_remaining ?? 20.0,
+      diskQuotaGb: r.disk_quota_gb ?? 100.0,
       status: r.status,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
@@ -45,10 +49,7 @@ export class AccountService {
   }
 
   getById(id: string): AccountRecord | null {
-    const row = this.db
-      .query("SELECT * FROM accounts WHERE id = ?")
-      .get(id) as AccountRecord | null;
-    return row;
+    return this.db.query("SELECT * FROM accounts WHERE id = ?").get(id) as AccountRecord | null;
   }
 
   create(input: CreateAccountInput): PublicAccount {
@@ -57,8 +58,8 @@ export class AccountService {
     const { encrypted, iv } = encryptApiKey(input.apiKey, this.masterSecret);
 
     this.db.run(
-      `INSERT INTO accounts (id, label, username, api_key_encrypted, api_key_iv, proxy_url, gpu_hours_remaining, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 30.0, 'active', ?, ?)`,
+      `INSERT INTO accounts (id, label, username, api_key_encrypted, api_key_iv, proxy_url, gpu_hours_remaining, tpu_hours_remaining, disk_quota_gb, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 30.0, 20.0, 100.0, 'active', ?, ?)`,
       [id, input.label, input.username.trim(), encrypted, iv, input.proxyUrl ?? null, now, now]
     );
 
@@ -68,6 +69,8 @@ export class AccountService {
       username: input.username.trim(),
       proxyUrl: input.proxyUrl ?? null,
       gpuHoursRemaining: 30.0,
+      tpuHoursRemaining: 20.0,
+      diskQuotaGb: 100.0,
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -81,34 +84,32 @@ export class AccountService {
 
   getClientForAccount(id: string): KaggleApiClient {
     const account = this.getById(id);
-    if (!account) {
-      throw new Error(`Account not found: ${id}`);
-    }
-
+    if (!account) throw new Error(`Account not found: ${id}`);
     const plainApiKey = decryptApiKey(
       account.api_key_encrypted,
       account.api_key_iv,
       this.masterSecret
     );
-
     return new KaggleApiClient(account.username, plainApiKey, account.proxy_url);
   }
 
   async testAccountConnection(id: string): Promise<{ ok: boolean; message: string }> {
     const client = this.getClientForAccount(id);
     const testResult = await client.testCredentials();
-
     const newStatus = testResult.ok ? "active" : "invalid";
     this.db.run("UPDATE accounts SET status = ?, updated_at = ? WHERE id = ?", [
       newStatus,
       Date.now(),
       id,
     ]);
-
     return testResult;
   }
 
-  selectAccount(strategy: "manual" | "max_quota" | "round_robin", targetAccountId?: string): AccountRecord {
+  selectAccount(
+    strategy: "manual" | "max_quota" | "round_robin",
+    targetAccountId?: string,
+    accelerator: "gpu" | "tpu" | "cpu" = "gpu"
+  ): AccountRecord {
     if (strategy === "manual") {
       if (!targetAccountId) throw new Error("targetAccountId required for manual selection");
       const acc = this.getById(targetAccountId);
@@ -116,28 +117,25 @@ export class AccountService {
       return acc;
     }
 
+    const orderBy = accelerator === "tpu" ? "tpu_hours_remaining DESC" : "gpu_hours_remaining DESC";
     const activeAccounts = this.db
-      .query("SELECT * FROM accounts WHERE status = 'active' ORDER BY gpu_hours_remaining DESC")
+      .query(`SELECT * FROM accounts WHERE status = 'active' ORDER BY ${orderBy}`)
       .all() as AccountRecord[];
 
     if (activeAccounts.length === 0) {
       throw new Error("No active Kaggle accounts found. Please add or verify an account.");
     }
 
-    if (strategy === "max_quota") {
-      return activeAccounts[0];
-    }
-
-    // round_robin: pick the active account with oldest updated_at or least active jobs
-    const picked = activeAccounts[activeAccounts.length - 1];
-    return picked;
+    if (strategy === "max_quota") return activeAccounts[0];
+    return activeAccounts[activeAccounts.length - 1];
   }
 
-  updateQuota(accountId: string, elapsedSeconds: number): void {
+  updateQuota(accountId: string, elapsedSeconds: number, accelerator: "gpu" | "tpu" = "gpu"): void {
     const hoursElapsed = elapsedSeconds / 3600;
+    const col = accelerator === "tpu" ? "tpu_hours_remaining" : "gpu_hours_remaining";
     this.db.run(
       `UPDATE accounts 
-       SET gpu_hours_remaining = MAX(0.0, gpu_hours_remaining - ?), updated_at = ? 
+       SET ${col} = MAX(0.0, ${col} - ?), updated_at = ? 
        WHERE id = ?`,
       [hoursElapsed, Date.now(), accountId]
     );

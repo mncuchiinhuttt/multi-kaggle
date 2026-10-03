@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Cpu, Globe, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Cpu, Globe, ShieldCheck, Zap, HardDrive } from "lucide-react";
 import type { Account } from "./AccountsTab";
 
 interface AccountCardProps {
@@ -15,7 +15,8 @@ export const AccountCard: React.FC<AccountCardProps> = ({
   onTest,
   onDelete,
 }) => {
-  const quotaPercent = Math.min(100, Math.max(0, (acc.gpuHoursRemaining / 30) * 100));
+  const gpuPercent = Math.min(100, Math.max(0, ((acc.gpuHoursRemaining ?? 30) / 30) * 100));
+  const tpuPercent = Math.min(100, Math.max(0, ((acc.tpuHoursRemaining ?? 20) / 20) * 100));
 
   return (
     <div className="border border-border bg-card hover:border-primary/50 transition-colors flex flex-col justify-between">
@@ -41,34 +42,63 @@ export const AccountCard: React.FC<AccountCardProps> = ({
           </span>
         </div>
 
-        <div className="space-y-1.5 pt-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground flex items-center gap-1 font-mono text-[11px]">
-              <Cpu className="h-3 w-3" /> GPU QUOTA
-            </span>
-            <span className="font-mono text-foreground font-medium text-[11px]">
-              {acc.gpuHoursRemaining.toFixed(1)}h / 30.0h
-            </span>
+        {/* GPU & TPU Quota Multi-Metric Bars */}
+        <div className="space-y-2.5 pt-1">
+          {/* GPU Metric */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs font-mono">
+              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                <Cpu className="h-3 w-3 text-primary" /> GPU QUOTA
+              </span>
+              <span className="text-foreground font-medium text-[11px]">
+                {(acc.gpuHoursRemaining ?? 30.0).toFixed(1)}h / 30.0h
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-secondary overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  gpuPercent < 20 ? "bg-destructive" : "bg-primary"
+                }`}
+                style={{ width: `${gpuPercent}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 w-full bg-secondary overflow-hidden">
-            <div
-              className={`h-full transition-all duration-300 ${
-                quotaPercent < 20 ? "bg-destructive" : "bg-primary"
-              }`}
-              style={{ width: `${quotaPercent}%` }}
-            />
+
+          {/* TPU Metric */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs font-mono">
+              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                <Zap className="h-3 w-3 text-amber-500" /> TPU v3-8 QUOTA
+              </span>
+              <span className="text-foreground font-medium text-[11px]">
+                {(acc.tpuHoursRemaining ?? 20.0).toFixed(1)}h / 20.0h
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-secondary overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  tpuPercent < 20 ? "bg-destructive" : "bg-amber-500"
+                }`}
+                style={{ width: `${tpuPercent}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Meta details */}
       <div className="px-4 py-3 bg-secondary/30 space-y-1.5 text-xs font-mono text-muted-foreground border-b border-border">
-        <div className="flex items-center gap-2 truncate">
-          <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
-          <span className="truncate">{acc.proxyUrl || "Direct Connection (No Proxy)"}</span>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="flex items-center gap-1.5">
+            <HardDrive className="h-3 w-3 text-muted-foreground" /> STORAGE DISK
+          </span>
+          <span className="text-foreground font-semibold">
+            {acc.diskQuotaGb ?? 100} GB FREE
+          </span>
         </div>
-        <div className="flex items-center gap-2 truncate">
-          <ShieldCheck className="h-3 w-3 shrink-0 text-muted-foreground" />
-          <span className="truncate">Token Encrypted (AES-256)</span>
+        <div className="flex items-center gap-2 truncate text-[11px]">
+          <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <span className="truncate">{acc.proxyUrl || "Direct IP (No Proxy)"}</span>
         </div>
       </div>
 

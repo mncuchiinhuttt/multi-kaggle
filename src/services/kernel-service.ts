@@ -10,6 +10,7 @@ export interface DispatchKernelInput {
   strategy?: "manual" | "max_quota" | "round_robin";
   targetAccountId?: string;
   isGpu?: boolean;
+  isTpu?: boolean;
   enableInternet?: boolean;
 }
 
@@ -37,9 +38,9 @@ export class KernelService {
   async dispatch(input: DispatchKernelInput): Promise<{ ok: boolean; job?: JobRecord; error?: string }> {
     try {
       const strategy = input.strategy ?? "max_quota";
-      const account = this.accountService.selectAccount(strategy, input.targetAccountId);
+      const accelerator = input.isTpu ? "tpu" : input.isGpu ? "gpu" : "cpu";
+      const account = this.accountService.selectAccount(strategy, input.targetAccountId, accelerator);
 
-      // Check concurrency limit: max 2 active sessions per Kaggle account
       const activeCount = this.db
         .query(
           "SELECT COUNT(*) as count FROM jobs WHERE account_id = ? AND status IN ('queued', 'running')"
@@ -65,14 +66,13 @@ export class KernelService {
         slug: cleanSlug,
         notebookContent: input.notebookContent,
         kernelType: input.kernelType ?? "notebook",
-        enableGpu: input.isGpu ?? true,
+        enableGpu: input.isGpu ?? false,
+        enableTpu: input.isTpu ?? false,
         enableInternet: input.enableInternet ?? true,
         isPrivate: true,
       });
 
-      if (!pushRes.ok) {
-        return { ok: false, error: pushRes.error };
-      }
+      if (!pushRes.ok) return { ok: false, error: pushRes.error };
 
       const now = Date.now();
       const jobId = crypto.randomUUID();
@@ -83,7 +83,8 @@ export class KernelService {
         title: input.title,
         language: "python",
         kernel_type: input.kernelType ?? "notebook",
-        is_gpu: input.isGpu ?? true ? 1 : 0,
+        is_gpu: input.isGpu ? 1 : 0,
+        is_tpu: input.isTpu ? 1 : 0,
         enable_internet: input.enableInternet ?? true ? 1 : 0,
         status: "queued",
         start_time: now,
@@ -96,8 +97,8 @@ export class KernelService {
       };
 
       this.db.run(
-        `INSERT INTO jobs (id, account_id, kernel_slug, title, language, kernel_type, is_gpu, enable_internet, status, start_time, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO jobs (id, account_id, kernel_slug, title, language, kernel_type, is_gpu, is_tpu, enable_internet, status, start_time, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           job.id,
           job.account_id,
@@ -106,6 +107,7 @@ export class KernelService {
           job.language,
           job.kernel_type,
           job.is_gpu,
+          job.is_tpu,
           job.enable_internet,
           job.status,
           job.start_time,
@@ -123,7 +125,6 @@ export class KernelService {
   cancelJob(id: string): boolean {
     const job = this.getJobById(id);
     if (!job) return false;
-
     this.db.run("UPDATE jobs SET status = 'cancelled', end_time = ? WHERE id = ?", [
       Date.now(),
       id,

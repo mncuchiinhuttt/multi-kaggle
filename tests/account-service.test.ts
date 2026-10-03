@@ -2,10 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { initDatabase } from "@/db/database";
 import { AccountService } from "@/services/account-service";
 
-describe("AccountService & Strategy Selection", () => {
+describe("AccountService & Strategy Selection with TPU", () => {
   const secretKey = "test-secret-123456789";
 
-  it("creates account, retrieves it with masked info and handles max_quota strategy", () => {
+  it("handles GPU and TPU quota tracking and selection strategies", () => {
     const db = initDatabase(":memory:");
     const service = new AccountService(db, secretKey);
 
@@ -21,16 +21,16 @@ describe("AccountService & Strategy Selection", () => {
       apiKey: "secret_token_2",
     });
 
-    // Artificially change quota of user_one to 10.0
-    db.run("UPDATE accounts SET gpu_hours_remaining = 10.0 WHERE id = ?", [acc1.id]);
+    // Artificially change TPU quota of user_one to 5.0
+    db.run("UPDATE accounts SET tpu_hours_remaining = 5.0 WHERE id = ?", [acc1.id]);
 
-    const pickedMaxQuota = service.selectAccount("max_quota");
-    expect(pickedMaxQuota.id).toBe(acc2.id); // user_two has 30.0 vs 10.0
+    const pickedMaxTpu = service.selectAccount("max_quota", undefined, "tpu");
+    expect(pickedMaxTpu.id).toBe(acc2.id); // user_two has 20.0 vs 5.0
 
-    // Deduct quota
-    service.updateQuota(acc2.id, 3600); // 1 hour
+    // Deduct TPU quota
+    service.updateQuota(acc2.id, 3600, "tpu"); // 1 hour
     const updatedAcc2 = service.getById(acc2.id);
-    expect(updatedAcc2?.gpu_hours_remaining).toBe(29.0);
+    expect(updatedAcc2?.tpu_hours_remaining).toBe(19.0);
 
     db.close();
   });
