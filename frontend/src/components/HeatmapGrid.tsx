@@ -42,6 +42,17 @@ export const HeatmapGrid: React.FC<HeatmapGridProps> = ({ days }) => {
     }
   });
 
+  const getTooltipClass = (wIdx: number, dayIdx: number) => {
+    const vPos = dayIdx <= 1 ? "top-full mt-2" : "bottom-full mb-2";
+    let hPos = "left-1/2 -translate-x-1/2";
+    if (wIdx >= weeks.length - 6) {
+      hPos = "right-0";
+    } else if (wIdx < 4) {
+      hPos = "left-0";
+    }
+    return `absolute ${vPos} ${hPos} hidden group-hover:block z-50 whitespace-nowrap p-2.5 bg-popover text-popover-foreground border border-border font-mono text-[11px] shadow-2xl pointer-events-none select-none`;
+  };
+
   return (
     <div className="border border-border bg-card p-6 space-y-5 w-full">
       {/* Header with Title and Legend */}
@@ -64,8 +75,8 @@ export const HeatmapGrid: React.FC<HeatmapGridProps> = ({ days }) => {
         </div>
       </div>
 
-      {/* Synchronized Grid Container: Day labels on left + 52-week columns */}
-      <div className="overflow-x-auto pb-2">
+      {/* Synchronized Grid Container */}
+      <div className="overflow-x-auto pb-4 pt-1">
         <div className="min-w-[800px] w-full">
           {/* Main Grid: Left labels (w-7) + Columns matching month headers */}
           <div className="flex gap-2">
@@ -100,23 +111,23 @@ export const HeatmapGrid: React.FC<HeatmapGridProps> = ({ days }) => {
               <div className="flex gap-1.5 justify-between">
                 {weeks.map((week, wIdx) => (
                   <div key={wIdx} className="flex flex-col gap-1.5 flex-1">
-                    {week.map((day) => {
+                    {week.map((day, dayIdx) => {
                       const hours = (day.totalSeconds / 3600).toFixed(1);
                       return (
                         <div
                           key={day.date}
                           className={`w-full aspect-square max-w-[16px] min-w-[8px] ${getColorLevel(day.count)} transition-all hover:scale-125 cursor-pointer relative group`}
                         >
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 whitespace-nowrap p-2 bg-popover text-popover-foreground border border-border font-mono text-[11px] shadow-xl pointer-events-none">
-                            <div className="font-bold">{day.date}</div>
-                            <div>{day.count} runs ({hours} hrs)</div>
+                          <div className={getTooltipClass(wIdx, dayIdx)}>
+                            <div className="font-bold border-b border-border pb-1 mb-1">{day.date}</div>
+                            <div className="text-foreground">{day.count} {day.count === 1 ? "run" : "runs"} ({hours} hrs)</div>
                             {day.gpuSeconds > 0 && (
-                              <div className="text-primary text-[10px]">
+                              <div className="text-primary text-[10px] font-semibold">
                                 GPU: {(day.gpuSeconds / 3600).toFixed(1)}h
                               </div>
                             )}
                             {day.tpuSeconds > 0 && (
-                              <div className="text-amber-500 text-[10px]">
+                              <div className="text-amber-500 text-[10px] font-semibold">
                                 TPU: {(day.tpuSeconds / 3600).toFixed(1)}h
                               </div>
                             )}
