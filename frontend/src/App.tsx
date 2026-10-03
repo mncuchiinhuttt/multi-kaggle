@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AccountsTab, type Account } from "@/components/AccountsTab";
 import { AppNavbar } from "@/components/AppNavbar";
 import { DispatchTab } from "@/components/DispatchTab";
@@ -8,8 +9,8 @@ import { KpiStrip } from "@/components/KpiStrip";
 import { SettingsTab } from "@/components/SettingsTab";
 import { UsageTab } from "@/components/UsageTab";
 
-export function App() {
-  const [activeTab, setActiveTab] = useState<"accounts" | "dispatch" | "jobs" | "usage" | "settings">("accounts");
+function DashboardLayout() {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [showDonate, setShowDonate] = useState(false);
@@ -58,8 +59,6 @@ export function App() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-150">
       <AppNavbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         accountsCount={accounts.length}
         runningJobsCount={runningJobsCount}
         isDark={isDark}
@@ -70,19 +69,32 @@ export function App() {
       <KpiStrip accounts={accounts} runningJobsCount={runningJobsCount} />
 
       <main className="flex-1 w-full px-4 sm:px-8 lg:px-12 py-6">
-        {activeTab === "accounts" && <AccountsTab accounts={accounts} onRefresh={fetchAccounts} />}
-        {activeTab === "dispatch" && (
-          <DispatchTab
-            accounts={accounts}
-            onDispatched={() => {
-              fetchJobs();
-              setActiveTab("jobs");
-            }}
+        <Routes>
+          <Route path="/" element={<Navigate to="/accounts" replace />} />
+          <Route
+            path="/accounts"
+            element={<AccountsTab accounts={accounts} onRefresh={fetchAccounts} />}
           />
-        )}
-        {activeTab === "jobs" && <JobsTab jobs={jobs} onRefresh={fetchJobs} />}
-        {activeTab === "usage" && <UsageTab />}
-        {activeTab === "settings" && <SettingsTab />}
+          <Route
+            path="/dispatch"
+            element={
+              <DispatchTab
+                accounts={accounts}
+                onDispatched={() => {
+                  fetchJobs();
+                  navigate("/jobs");
+                }}
+              />
+            }
+          />
+          <Route
+            path="/jobs"
+            element={<JobsTab jobs={jobs} onRefresh={fetchJobs} />}
+          />
+          <Route path="/usage" element={<UsageTab />} />
+          <Route path="/settings" element={<SettingsTab />} />
+          <Route path="*" element={<Navigate to="/accounts" replace />} />
+        </Routes>
       </main>
 
       <DonateModal open={showDonate} onClose={() => setShowDonate(false)} />
@@ -90,4 +102,10 @@ export function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <DashboardLayout />
+    </BrowserRouter>
+  );
+}

@@ -3,6 +3,7 @@ import { Terminal, StopCircle, Download } from "lucide-react";
 import { OutputsModal } from "./OutputsModal";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { JobsHeader } from "./JobsHeader";
+import { LogViewerModal } from "./LogViewerModal";
 
 export interface Job {
   id: string;
@@ -155,25 +156,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
       </div>
 
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <div className="w-full max-w-3xl border border-border bg-card p-4 space-y-3 shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between border-b border-border pb-2">
-              <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground flex items-center gap-2">
-                <Terminal className="h-3.5 w-3.5 text-primary" />
-                EXECUTION OUTPUT STREAM
-              </h3>
-              <button
-                onClick={() => setSelectedLog(null)}
-                className="text-xs font-mono uppercase px-2 py-0.5 bg-secondary border border-border text-muted-foreground hover:text-foreground"
-              >
-                CLOSE [ESC]
-              </button>
-            </div>
-            <pre className="flex-1 overflow-y-auto bg-black text-emerald-400 p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap border border-border">
-              {selectedLog}
-            </pre>
-          </div>
-        </div>
+        <LogViewerModal log={selectedLog} onClose={() => setSelectedLog(null)} />
       )}
 
       {selectedOutputs && (
