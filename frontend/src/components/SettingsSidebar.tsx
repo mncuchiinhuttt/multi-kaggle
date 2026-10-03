@@ -7,48 +7,56 @@ interface SettingsSidebarProps {
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ onOpenGuide }) => (
   <div className="space-y-4">
-    {/* Setup Guide Button Card */}
-    <div className="border border-primary/30 bg-primary/5 p-4 space-y-2.5 font-mono text-xs">
-      <div className="flex items-center gap-2 font-bold text-foreground">
-        <HelpCircle className="w-4 h-4 text-primary" />
-        <span>Need Help with Setup?</span>
+    {/* Unified Telegram Bot & Commands Card with Setup Guide integrated */}
+    <div className="border border-border bg-card p-6 space-y-4 font-mono text-xs">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <h3 className="font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+          <Bot className="h-4 w-4 text-primary" />
+          Telegram Bot & Commands
+        </h3>
+        <button
+          type="button"
+          onClick={onOpenGuide}
+          className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-bold transition-colors"
+          title="Open step-by-step setup guide"
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          Setup Guide
+        </button>
       </div>
-      <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
-        Don&apos;t have a Telegram Bot or don&apos;t know how to get your personal Chat ID? Read our 3-step walkthrough.
-      </p>
+
+      <div className="space-y-2 text-xs">
+        <div className="p-2.5 bg-muted/40 border border-border">
+          <span className="font-bold text-foreground">/status</span> - 30h quota summary
+        </div>
+        <div className="p-2.5 bg-muted/40 border border-border">
+          <span className="font-bold text-foreground">/jobs</span> - Active kernel sessions
+        </div>
+        <div className="p-2.5 bg-muted/40 border border-border">
+          <span className="font-bold text-foreground">/outputs &lt;id&gt;</span> - Get artifacts
+        </div>
+        <div className="p-2.5 bg-muted/40 border border-border">
+          <span className="font-bold text-foreground">/cancel &lt;id&gt;</span> - Abort running job
+        </div>
+      </div>
+
       <button
         type="button"
         onClick={onOpenGuide}
-        className="w-full py-2 px-3 text-xs font-bold uppercase bg-primary hover:bg-primary-hover text-primary-foreground tracking-wider transition-colors shadow-sm"
+        className="w-full py-2 px-3 text-xs font-bold uppercase bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/40 tracking-wider transition-colors shadow-sm flex items-center justify-center gap-1.5"
       >
+        <HelpCircle className="w-3.5 h-3.5" />
         Open Bot Setup Guide
       </button>
     </div>
 
-    <div className="border border-border bg-card p-6 space-y-4">
-      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-        <Bot className="h-4 w-4 text-primary" />
-        Telegram Commands
-      </h3>
-      <div className="space-y-2 text-xs font-mono">
-        <div className="p-2 bg-muted/40 border border-border">
-          <span className="font-bold text-foreground">/status</span> - 30h quota summary
-        </div>
-        <div className="p-2 bg-muted/40 border border-border">
-          <span className="font-bold text-foreground">/jobs</span> - Active kernel sessions
-        </div>
-        <div className="p-2 bg-muted/40 border border-border">
-          <span className="font-bold text-foreground">/cancel &lt;id&gt;</span> - Abort running job
-        </div>
-      </div>
-    </div>
-
-    <div className="border border-border bg-card p-6 space-y-2">
-      <div className="text-xs font-mono font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+    {/* Local Storage Security Card */}
+    <div className="border border-border bg-card p-6 space-y-2 font-mono">
+      <div className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
         <Activity className="h-4 w-4 text-amber-500" />
         Local Storage Security
       </div>
-      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed">
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
         Bot token and all account secrets are persisted in the local SQLite engine with PBKDF2 + AES-256-GCM.
       </p>
     </div>
