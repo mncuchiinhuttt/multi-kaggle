@@ -5,6 +5,7 @@ import { AppNavbar } from "@/components/AppNavbar";
 import { DispatchTab } from "@/components/DispatchTab";
 import { DonateModal } from "@/components/DonateModal";
 import { JobsTab, type Job } from "@/components/JobsTab";
+import { JobDetailPage } from "@/components/JobDetailPage";
 import { KpiStrip } from "@/components/KpiStrip";
 import { SettingsTab } from "@/components/SettingsTab";
 import { UsageTab } from "@/components/UsageTab";
@@ -91,6 +92,7 @@ function DashboardLayout() {
             path="/jobs"
             element={<JobsTab jobs={jobs} onRefresh={fetchJobs} />}
           />
+          <Route path="/jobs/:jobId" element={<JobDetailPage />} />
           <Route path="/usage" element={<UsageTab />} />
           <Route path="/settings" element={<SettingsTab />} />
           <Route path="*" element={<Navigate to="/accounts" replace />} />
