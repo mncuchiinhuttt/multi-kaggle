@@ -5,9 +5,10 @@ import { DispatchTab } from "@/components/DispatchTab";
 import { JobsTab, type Job } from "@/components/JobsTab";
 import { KpiStrip } from "@/components/KpiStrip";
 import { SettingsTab } from "@/components/SettingsTab";
+import { UsageTab } from "@/components/UsageTab";
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"accounts" | "dispatch" | "jobs" | "settings">("accounts");
+  const [activeTab, setActiveTab] = useState<"accounts" | "dispatch" | "jobs" | "usage" | "settings">("accounts");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -30,9 +31,7 @@ export function App() {
       const res = await fetch("/api/accounts");
       const data = await res.json();
       if (data.ok) setAccounts(data.data);
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const fetchJobs = async () => {
@@ -40,9 +39,7 @@ export function App() {
       const res = await fetch("/api/jobs");
       const data = await res.json();
       if (data.ok) setJobs(data.data);
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -81,6 +78,7 @@ export function App() {
           />
         )}
         {activeTab === "jobs" && <JobsTab jobs={jobs} onRefresh={fetchJobs} />}
+        {activeTab === "usage" && <UsageTab />}
         {activeTab === "settings" && <SettingsTab />}
       </main>
     </div>

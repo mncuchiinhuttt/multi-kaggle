@@ -7,9 +7,11 @@ import { TelegramNotifier } from "@/bot/notifier";
 import { createTelegramBot } from "@/bot/telegram-bot";
 import { initDatabase } from "@/db/database";
 import { AccountService } from "@/services/account-service";
+import { AnalyticsService } from "@/services/analytics-service";
 import { KernelService } from "@/services/kernel-service";
 import { PollerService } from "@/services/poller-service";
 import { registerAccountRoutes } from "./account-routes";
+import { registerAnalyticsRoutes } from "./analytics-routes";
 import { registerDatasetRoutes } from "./dataset-routes";
 import { registerJobRoutes } from "./job-routes";
 import { registerSettingsRoutes } from "./settings-routes";
@@ -20,6 +22,7 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
 
   const accountService = new AccountService(db, masterSecret);
   const kernelService = new KernelService(db, accountService);
+  const analyticsService = new AnalyticsService(db);
 
   // Settings
   const tgTokenRow = db
@@ -63,6 +66,7 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
   registerAccountRoutes(app, accountService);
   registerJobRoutes(app, kernelService, accountService);
   registerDatasetRoutes(app, accountService);
+  registerAnalyticsRoutes(app, analyticsService);
   registerSettingsRoutes(app, db);
 
   // Serve static frontend build if present
@@ -98,5 +102,5 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
     return c.text("Multi-Kaggle Backend Running. Frontend dist not found.", 200);
   });
 
-  return { app, db, poller, accountService, kernelService };
+  return { app, db, poller, accountService, kernelService, analyticsService };
 }

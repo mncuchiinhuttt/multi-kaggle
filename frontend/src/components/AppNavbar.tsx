@@ -1,9 +1,9 @@
 import React from "react";
-import { Cpu, Users, PlaySquare, ListOrdered, Settings, Sun, Moon } from "lucide-react";
+import { Cpu, Users, PlaySquare, ListOrdered, Settings, Sun, Moon, BarChart3 } from "lucide-react";
 
 interface AppNavbarProps {
-  activeTab: "accounts" | "dispatch" | "jobs" | "settings";
-  setActiveTab: (tab: "accounts" | "dispatch" | "jobs" | "settings") => void;
+  activeTab: "accounts" | "dispatch" | "jobs" | "usage" | "settings";
+  setActiveTab: (tab: "accounts" | "dispatch" | "jobs" | "usage" | "settings") => void;
   accountsCount: number;
   runningJobsCount: number;
   isDark: boolean;
@@ -37,7 +37,7 @@ export const AppNavbar: React.FC<AppNavbarProps> = ({
       <nav className="flex items-center space-x-1">
         <button
           onClick={() => setActiveTab("accounts")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
             activeTab === "accounts"
               ? "bg-secondary text-foreground border-border font-medium"
               : "text-muted-foreground hover:text-foreground border-transparent"
@@ -48,7 +48,7 @@ export const AppNavbar: React.FC<AppNavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab("dispatch")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
             activeTab === "dispatch"
               ? "bg-secondary text-foreground border-border font-medium"
               : "text-muted-foreground hover:text-foreground border-transparent"
@@ -59,7 +59,7 @@ export const AppNavbar: React.FC<AppNavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab("jobs")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
             activeTab === "jobs"
               ? "bg-secondary text-foreground border-border font-medium"
               : "text-muted-foreground hover:text-foreground border-transparent"
@@ -74,8 +74,19 @@ export const AppNavbar: React.FC<AppNavbarProps> = ({
           )}
         </button>
         <button
+          onClick={() => setActiveTab("usage")}
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
+            activeTab === "usage"
+              ? "bg-secondary text-foreground border-border font-medium"
+              : "text-muted-foreground hover:text-foreground border-transparent"
+          }`}
+        >
+          <BarChart3 className="h-3.5 w-3.5 text-primary" />
+          Usage
+        </button>
+        <button
           onClick={() => setActiveTab("settings")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
+          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono tracking-wide uppercase transition-colors border ${
             activeTab === "settings"
               ? "bg-secondary text-foreground border-border font-medium"
               : "text-muted-foreground hover:text-foreground border-transparent"
