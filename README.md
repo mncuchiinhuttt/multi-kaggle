@@ -41,21 +41,24 @@ http://localhost:7890/auth
 ```
 Hệ thống sẽ tự động chuyển hướng đến trang xác thực OAuth của Kaggle và tự động callback về ứng dụng để thêm tài khoản vào danh sách.
 
-### C. Điều phối Notebook từ CLI (cho AI Agent hoặc Terminal)
+### C. Bộ lệnh CLI (Dành cho AI Agent & Terminal)
 ```bash
-# Nộp notebook, tự động chọn acc còn nhiều GPU quota nhất
-multikaggle run ./my_notebook.ipynb --title "Train Model Stage 1"
+# Nộp notebook lên GPU T4 (mặc định)
+multikaggle run ./model.ipynb --title "Train Model"
 
-# Chế độ JSON Output (dành riêng cho AI Agent parse)
+# Nộp notebook lên TPU v3-8 (128GB HBM)
+multikaggle run ./jax_train.ipynb --tpu
+
+# Nộp notebook ở chế độ JSON output (cho AI Agent parse)
 multikaggle run ./pipeline.ipynb --json
 
-# Tùy chọn accelerator & internet
-multikaggle run ./script.py --no-gpu --no-internet
-```
+# Kiểm tra & Tải các file output (weights, submission.csv) về máy
+multikaggle outputs <job_id> --download ./my_outputs/
 
-### D. Quản lý tài khoản & Jobs qua CLI
-```bash
-# Xem danh sách tài khoản, trạng thái & GPU hours còn lại
+# Tìm kiếm datasets của các tài khoản đã liên kết
+multikaggle datasets --search "titanic"
+
+# Xem trạng thái tài khoản & GPU/TPU/Disk quotas
 multikaggle accounts
 
 # Thêm tài khoản mới từ terminal
@@ -64,9 +67,16 @@ multikaggle accounts add --label "Farm 1" --username "kaggle_user_1" --key "toke
 # Xem các jobs đang chạy
 multikaggle jobs
 
-# Hủy job khẩn cấp để cứu quota GPU
+# Hủy job khẩn cấp để cứu quota GPU/TPU
 multikaggle cancel <job_id>
 ```
+
+### D. Các lệnh Telegram Bot Remote Control
+- `/status` — Xem trạng thái acc, quota GPU (30h), quota TPU (20h), dung lượng Disk (100GB).
+- `/jobs` — Xem danh sách các kernel jobs đang chạy hoặc gần đây.
+- `/outputs <job_id>` — Lấy link tải các artifact sinh ra từ lượt chạy.
+- `/datasets [search]` — Tra cứu nhanh datasets của tài khoản.
+- `/cancel <job_id>` — Hủy khẩn cấp session đang chạy để bảo toàn hạn ngạch GPU/TPU.
 
 ---
 
@@ -74,19 +84,8 @@ multikaggle cancel <job_id>
 
 - **Cổng mặc định**: `http://localhost:7890` (tránh xung đột với các web server cổng 3000 khác).
 - **Direct OAuth URL**: Hỗ trợ endpoint `/auth` cho phép mở link ở bất kỳ trình duyệt nào.
+- **Hỗ trợ phần cứng đa dạng**: GPU T4x2 (30h/tuần) & TPU v3-8 128GB HBM (20h/tuần) & CPU không giới hạn.
+- **Tải file Output**: Hỗ trợ tải trực tiếp các file kết quả (.pt, .csv, log) từ Web UI hoặc CLI.
 - **Zero-Python Dependency**: Gọi trực tiếp Kaggle REST API v1 với Basic Auth và native Proxy.
 - **Bảo mật**: Mã hóa Kaggle API Tokens bằng **AES-256-GCM** trước khi lưu vào SQLite cục bộ (`bun:sqlite`).
-- **GPU Farm & Quota Optimization**:
-  - Quản lý hạn mức 30 giờ GPU/tuần cho từng tài khoản.
-  - Tự động trừ quota dựa trên thời gian chạy thực tế của kernel.
-  - Điều phối (dispatch) thông minh: Auto chọn account còn nhiều GPU nhất (`max_quota`) hoặc theo vòng (`round_robin`).
-  - Kiểm soát giới hạn Kaggle concurrency (tối đa 2 session GPU/tài khoản).
-  - Tự động gán Watermark Run-ID để tránh trùng mã hash khi nộp nhiều acc.
-- **Telegram Bot Remote Controller (grammY)**:
-  - Chạy cơ chế **Long-polling** (không cần IP tĩnh, không cần domain hay webhook).
-  - Các lệnh: `/status`, `/jobs`, `/cancel <job_id>`.
-  - Tự động push notification báo kết quả `[SUCCESS]` hoặc `[FAILED]` kèm log tóm tắt.
-- **Web Dashboard**:
-  - Giao diện Full-Width chuẩn **Cloudflare Tech & ShadcnBlocks**.
-  - Hỗ trợ đầy đủ **Light / Dark Mode**.
-  - Tích hợp kiểm tra phiên bản và thông báo cập nhật GitHub Release tự động.
+- **Web Dashboard**: Full-Width chuẩn **Cloudflare Tech & ShadcnBlocks**, hỗ trợ **Light / Dark Mode**.

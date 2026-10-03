@@ -8,6 +8,7 @@ export interface RunCommandOptions {
   strategy?: "max_quota" | "round_robin" | "manual";
   account?: string;
   gpu?: boolean;
+  tpu?: boolean;
   internet?: boolean;
   json?: boolean;
 }
@@ -37,7 +38,8 @@ export async function handleRunCommand(
     kernelType: isScript ? "script" : "notebook",
     strategy: options.strategy ?? "max_quota",
     targetAccountId: options.account,
-    isGpu: options.gpu ?? true,
+    isGpu: options.tpu ? false : (options.gpu ?? true),
+    isTpu: Boolean(options.tpu),
     enableInternet: options.internet ?? true,
   });
 
@@ -52,10 +54,11 @@ export async function handleRunCommand(
     process.exit(1);
   }
 
+  const accel = result.job.is_tpu ? "TPU v3-8" : result.job.is_gpu ? "GPU T4x2" : "CPU";
   console.log(`Successfully dispatched kernel!`);
   console.log(`• Job ID   : ${result.job.id}`);
   console.log(`• Slug     : ${result.job.kernel_slug}`);
   console.log(`• Status   : ${result.job.status.toUpperCase()}`);
-  console.log(`• Type     : ${result.job.kernel_type} (${result.job.is_gpu ? "GPU" : "CPU"})`);
+  console.log(`• Hardware : ${accel}`);
   console.log(`• Track    : run 'multikaggle jobs' to inspect status`);
 }

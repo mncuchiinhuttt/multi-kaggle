@@ -6,6 +6,8 @@ import { KernelService } from "@/services/kernel-service";
 import { handleRunCommand } from "./commands/run";
 import { handleAccountsCommand, handleAddAccountCommand } from "./commands/accounts";
 import { handleJobsCommand, handleCancelCommand } from "./commands/jobs";
+import { handleOutputsCommand } from "./commands/outputs";
+import { handleDatasetsCommand } from "./commands/datasets";
 import { handleServeCommand } from "./commands/serve";
 
 const HELP_TEXT = `
@@ -14,6 +16,8 @@ Multi-Kaggle CLI - Lightweight Kaggle multi-account manager & dispatcher
 Usage:
   multikaggle [serve] [--port 7890] [--no-open]   Launch Web UI Dashboard & API daemon
   multikaggle run <file.ipynb|file.py> [options]  Dispatch notebook to Kaggle
+  multikaggle outputs <job_id> [--download <dir>] Inspect or download outputs from a run
+  multikaggle datasets [list] [--search <term>]   List or search datasets across accounts
   multikaggle accounts [list]                     List configured accounts & quotas
   multikaggle accounts add [options]              Add new Kaggle account credentials
   multikaggle jobs [list]                         List recent/running jobs
@@ -23,6 +27,7 @@ Options for 'run':
   --title <string>       Title of the kernel
   --strategy <strategy>  max_quota (default) | round_robin | manual
   --account <account_id> Target account ID (required for manual strategy)
+  --tpu                  Enable TPU v3-8 (128GB) accelerator
   --no-gpu               Disable GPU accelerator (use CPU)
   --no-internet          Disable internet access
   --json                 Output machine-readable JSON (ideal for AI agents)
@@ -74,6 +79,7 @@ async function main() {
           title: { type: "string" },
           strategy: { type: "string" },
           account: { type: "string" },
+          tpu: { type: "boolean" },
           "no-gpu": { type: "boolean" },
           "no-internet": { type: "boolean" },
           json: { type: "boolean" },
@@ -86,10 +92,37 @@ async function main() {
         title: values.title as string | undefined,
         strategy: values.strategy as any,
         account: values.account as string | undefined,
+        tpu: Boolean(values.tpu),
         gpu: !values["no-gpu"],
         internet: !values["no-internet"],
         json: Boolean(values.json),
       });
+    } else if (command === "outputs") {
+      const jobId = args[1];
+      if (!jobId) {
+        console.error("Error: Please specify job ID to fetch outputs.");
+        process.exit(1);
+      }
+      const { values } = parseArgs({
+        args: args.slice(2),
+        options: {
+          download: { type: "string" },
+          json: { type: "boolean" },
+        },
+        strict: false,
+      });
+      await handleOutputsCommand(kernelService, accountService, jobId, values.download as string | undefined, Boolean(values.json));
+    } else if (command === "datasets") {
+      const { values } = parseArgs({
+        args: args.slice(1),
+        options: {
+          search: { type: "string" },
+          account: { type: "string" },
+          json: { type: "boolean" },
+        },
+        strict: false,
+      });
+      await handleDatasetsCommand(accountService, values.search as string | undefined, values.account as string | undefined, Boolean(values.json));
     } else if (command === "accounts") {
       const sub = args[1];
       if (sub === "add") {
