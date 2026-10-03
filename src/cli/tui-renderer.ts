@@ -48,6 +48,7 @@ export function renderTuiScreen(
   console.log(`
 ${c.orange}${c.bold}┌────────────────────────────────────────────────────────┐
 │  MULTI-KAGGLE ORCHESTRATOR & FARM DAEMON (v1.0.0)      │
+│  Author: Vo Minh Long (@mncuchiinhuttt)                │
 │  Daemon status: ${c.emerald}ONLINE${c.orange} at ${c.white}${paddedUrl}${c.orange}│
 └────────────────────────────────────────────────────────┘${c.reset}`);
 
