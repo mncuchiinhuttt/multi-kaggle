@@ -10,6 +10,7 @@ const DispatchSchema = z.object({
   kernelType: z.enum(["notebook", "script"]).optional(),
   strategy: z.enum(["manual", "max_quota", "round_robin"]).optional(),
   targetAccountId: z.string().optional(),
+  accelerator: z.enum(["nvidia-t4", "nvidia-p100", "tpu-v3-8", "cpu"]).optional(),
   isGpu: z.boolean().optional(),
   isTpu: z.boolean().optional(),
   enableInternet: z.boolean().optional(),
@@ -34,7 +35,6 @@ export function registerJobRoutes(
     return c.json({ ok: true, data: job });
   });
 
-  // Fetch real-time output files and download URLs for a job
   app.get("/api/jobs/:id/outputs", async (c) => {
     const id = c.req.param("id");
     const job = kernelService.getJobById(id);

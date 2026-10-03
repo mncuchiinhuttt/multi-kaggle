@@ -1,6 +1,7 @@
 import {
   KernelOutputSchema,
   KernelStatusSchema,
+  type ComputeAccelerator,
   type KernelOutputResponse,
   type KernelStatusResponse,
   type PushKernelInput,
@@ -60,20 +61,32 @@ export class KaggleApiClient {
       const fullId = `${this.username}/${input.slug}`;
       const text = injectNotebookWatermark(input.notebookContent, input.kernelType);
 
-      const payload = {
+      const isTpu = input.accelerator === "tpu-v3-8" || input.enableTpu;
+      const isGpu = input.accelerator === "nvidia-t4" || input.accelerator === "nvidia-p100" || input.enableGpu;
+
+      const payload: Record<string, unknown> = {
         id: fullId,
         slug: input.slug,
         text,
         language: input.language ?? "python",
         kernelType: input.kernelType ?? "notebook",
         isPrivate: input.isPrivate ?? true,
-        enableGpu: input.enableGpu ?? false,
-        enableTpu: input.enableTpu ?? false,
+        enableGpu: isGpu && !isTpu,
+        enableTpu: Boolean(isTpu),
         enableInternet: input.enableInternet ?? true,
         datasetDataSources: input.datasetDataSources ?? [],
         competitionSources: input.competitionSources ?? [],
         kernelDataSources: input.kernelDataSources ?? [],
       };
+
+      // Kaggle accelerator mappings
+      if (input.accelerator === "nvidia-p100") {
+        payload.accelerator = "NvidiaTeslaP100";
+      } else if (input.accelerator === "nvidia-t4") {
+        payload.accelerator = "NvidiaTeslaT4";
+      } else if (input.accelerator === "tpu-v3-8") {
+        payload.accelerator = "TpuVm";
+      }
 
       const res = await this.request(`/kernels/push`, {
         method: "POST",

@@ -1,12 +1,14 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import type { KernelService } from "@/services/kernel-service";
+import type { ComputeAccelerator } from "@/core/kaggle-types";
 
 export interface RunCommandOptions {
   filePath: string;
   title?: string;
   strategy?: "max_quota" | "round_robin" | "manual";
   account?: string;
+  accelerator?: ComputeAccelerator;
   gpu?: boolean;
   tpu?: boolean;
   internet?: boolean;
@@ -32,14 +34,17 @@ export async function handleRunCommand(
   const isScript = fileName.endsWith(".py");
   const title = options.title || fileName.replace(/\.[^/.]+$/, "");
 
+  const accel: ComputeAccelerator = options.accelerator || (options.tpu ? "tpu-v3-8" : options.gpu ? "nvidia-t4" : "cpu");
+
   const result = await kernelService.dispatch({
     title,
     notebookContent: content,
     kernelType: isScript ? "script" : "notebook",
     strategy: options.strategy ?? "max_quota",
     targetAccountId: options.account,
-    isGpu: options.tpu ? false : (options.gpu ?? true),
-    isTpu: Boolean(options.tpu),
+    accelerator: accel,
+    isGpu: accel === "nvidia-t4" || accel === "nvidia-p100",
+    isTpu: accel === "tpu-v3-8",
     enableInternet: options.internet ?? true,
   });
 
@@ -54,11 +59,19 @@ export async function handleRunCommand(
     process.exit(1);
   }
 
-  const accel = result.job.is_tpu ? "TPU v3-8" : result.job.is_gpu ? "GPU T4x2" : "CPU";
+  const accelLabel =
+    accel === "nvidia-p100"
+      ? "GPU Nvidia Tesla P100 (16GB HBM2)"
+      : accel === "nvidia-t4"
+      ? "GPU 2x Nvidia Tesla T4 (32GB GDDR6)"
+      : accel === "tpu-v3-8"
+      ? "TPU v3-8 (128GB HBM)"
+      : "Standard CPU (4 vCPUs, 30GB RAM)";
+
   console.log(`Successfully dispatched kernel!`);
   console.log(`• Job ID   : ${result.job.id}`);
   console.log(`• Slug     : ${result.job.kernel_slug}`);
   console.log(`• Status   : ${result.job.status.toUpperCase()}`);
-  console.log(`• Hardware : ${accel}`);
+  console.log(`• Hardware : ${accelLabel}`);
   console.log(`• Track    : run 'multikaggle jobs' to inspect status`);
 }

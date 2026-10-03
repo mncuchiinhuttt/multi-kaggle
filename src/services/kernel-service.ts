@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import type { JobRecord } from "@/db/database";
+import type { ComputeAccelerator } from "@/core/kaggle-types";
 import type { AccountService } from "./account-service";
 
 export interface DispatchKernelInput {
@@ -9,6 +10,7 @@ export interface DispatchKernelInput {
   kernelType?: "notebook" | "script";
   strategy?: "manual" | "max_quota" | "round_robin";
   targetAccountId?: string;
+  accelerator?: ComputeAccelerator;
   isGpu?: boolean;
   isTpu?: boolean;
   enableInternet?: boolean;
@@ -38,8 +40,9 @@ export class KernelService {
   async dispatch(input: DispatchKernelInput): Promise<{ ok: boolean; job?: JobRecord; error?: string }> {
     try {
       const strategy = input.strategy ?? "max_quota";
-      const accelerator = input.isTpu ? "tpu" : input.isGpu ? "gpu" : "cpu";
-      const account = this.accountService.selectAccount(strategy, input.targetAccountId, accelerator);
+      const accelType: ComputeAccelerator = input.accelerator || (input.isTpu ? "tpu-v3-8" : input.isGpu ? "nvidia-t4" : "cpu");
+      const accountStrategyCategory = accelType === "tpu-v3-8" ? "tpu" : accelType !== "cpu" ? "gpu" : "cpu";
+      const account = this.accountService.selectAccount(strategy, input.targetAccountId, accountStrategyCategory);
 
       const activeCount = this.db
         .query(
@@ -61,13 +64,17 @@ export class KernelService {
         .replace(/^-+|-+$/g, "")
         .slice(0, 50);
 
+      const isTpu = accelType === "tpu-v3-8";
+      const isGpu = accelType === "nvidia-t4" || accelType === "nvidia-p100";
+
       const client = this.accountService.getClientForAccount(account.id);
       const pushRes = await client.pushKernel({
         slug: cleanSlug,
         notebookContent: input.notebookContent,
         kernelType: input.kernelType ?? "notebook",
-        enableGpu: input.isGpu ?? false,
-        enableTpu: input.isTpu ?? false,
+        accelerator: accelType,
+        enableGpu: isGpu,
+        enableTpu: isTpu,
         enableInternet: input.enableInternet ?? true,
         isPrivate: true,
       });
@@ -83,8 +90,8 @@ export class KernelService {
         title: input.title,
         language: "python",
         kernel_type: input.kernelType ?? "notebook",
-        is_gpu: input.isGpu ? 1 : 0,
-        is_tpu: input.isTpu ? 1 : 0,
+        is_gpu: isGpu ? 1 : 0,
+        is_tpu: isTpu ? 1 : 0,
         enable_internet: input.enableInternet ?? true ? 1 : 0,
         status: "queued",
         start_time: now,

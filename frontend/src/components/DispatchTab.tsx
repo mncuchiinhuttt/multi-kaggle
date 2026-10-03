@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Play, Wifi } from "lucide-react";
 import type { Account } from "./AccountsTab";
-import { AcceleratorSelector } from "./AcceleratorSelector";
+import { AcceleratorSelector, type DetailedAccelerator } from "./AcceleratorSelector";
 import { CustomSelect } from "./CustomSelect";
 import { DispatchDropzone } from "./DispatchDropzone";
 import { StrategySelector } from "./StrategySelector";
@@ -15,7 +15,7 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
   const [title, setTitle] = useState("");
   const [strategy, setStrategy] = useState<"max_quota" | "round_robin" | "manual">("max_quota");
   const [targetAccountId, setTargetAccountId] = useState("");
-  const [accelerator, setAccelerator] = useState<"gpu" | "tpu" | "cpu">("gpu");
+  const [accelerator, setAccelerator] = useState<DetailedAccelerator>("nvidia-t4");
   const [enableInternet, setEnableInternet] = useState(true);
   const [notebookContent, setNotebookContent] = useState("");
   const [fileName, setFileName] = useState("");
@@ -54,8 +54,9 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
           kernelType: fileName.endsWith(".py") ? "script" : "notebook",
           strategy,
           targetAccountId: strategy === "manual" ? targetAccountId : undefined,
-          isGpu: accelerator === "gpu",
-          isTpu: accelerator === "tpu",
+          accelerator,
+          isGpu: accelerator === "nvidia-t4" || accelerator === "nvidia-p100",
+          isTpu: accelerator === "tpu-v3-8",
           enableInternet,
         }),
       });

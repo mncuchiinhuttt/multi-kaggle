@@ -1,11 +1,14 @@
 import { z } from "zod";
 
+export type ComputeAccelerator = "nvidia-t4" | "nvidia-p100" | "tpu-v3-8" | "cpu";
+
 export interface PushKernelInput {
   slug: string;
   notebookContent: string;
   kernelType?: "notebook" | "script";
   language?: "python";
   isPrivate?: boolean;
+  accelerator?: ComputeAccelerator;
   enableGpu?: boolean;
   enableTpu?: boolean;
   enableInternet?: boolean;

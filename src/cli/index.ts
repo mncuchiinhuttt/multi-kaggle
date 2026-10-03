@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { initDatabase } from "@/db/database";
+import type { ComputeAccelerator } from "@/core/kaggle-types";
 import { AccountService } from "@/services/account-service";
 import { KernelService } from "@/services/kernel-service";
 import { handleRunCommand } from "./commands/run";
@@ -27,7 +28,10 @@ Options for 'run':
   --title <string>       Title of the kernel
   --strategy <strategy>  max_quota (default) | round_robin | manual
   --account <account_id> Target account ID (required for manual strategy)
-  --tpu                  Enable TPU v3-8 (128GB) accelerator
+  --accelerator <type>   nvidia-t4 (default) | nvidia-p100 | tpu-v3-8 | cpu
+  --p100                 Shortcut for --accelerator nvidia-p100 (16GB HBM2)
+  --tpu                  Shortcut for --accelerator tpu-v3-8 (128GB HBM)
+  --cpu                  Shortcut for --accelerator cpu (Zero quota deduction)
   --no-gpu               Disable GPU accelerator (use CPU)
   --no-internet          Disable internet access
   --json                 Output machine-readable JSON (ideal for AI agents)
@@ -79,7 +83,10 @@ async function main() {
           title: { type: "string" },
           strategy: { type: "string" },
           account: { type: "string" },
+          accelerator: { type: "string" },
+          p100: { type: "boolean" },
           tpu: { type: "boolean" },
+          cpu: { type: "boolean" },
           "no-gpu": { type: "boolean" },
           "no-internet": { type: "boolean" },
           json: { type: "boolean" },
@@ -87,13 +94,26 @@ async function main() {
         strict: false,
       });
 
+      let accel: ComputeAccelerator | undefined = undefined;
+      const rawAccel = values.accelerator;
+      if (rawAccel === "nvidia-p100" || rawAccel === "nvidia-t4" || rawAccel === "tpu-v3-8" || rawAccel === "cpu") {
+        accel = rawAccel;
+      }
+      if (values.p100) accel = "nvidia-p100";
+      else if (values.tpu) accel = "tpu-v3-8";
+      else if (values.cpu || values["no-gpu"]) accel = "cpu";
+
+      const validStrategy =
+        values.strategy === "manual" || values.strategy === "round_robin" || values.strategy === "max_quota"
+          ? values.strategy
+          : undefined;
+
       await handleRunCommand(kernelService, {
         filePath,
-        title: values.title as string | undefined,
-        strategy: values.strategy as any,
-        account: values.account as string | undefined,
-        tpu: Boolean(values.tpu),
-        gpu: !values["no-gpu"],
+        title: typeof values.title === "string" ? values.title : undefined,
+        strategy: validStrategy,
+        account: typeof values.account === "string" ? values.account : undefined,
+        accelerator: accel,
         internet: !values["no-internet"],
         json: Boolean(values.json),
       });

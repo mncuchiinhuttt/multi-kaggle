@@ -6,7 +6,7 @@ export async function handleDatasetsCommand(
   accountId?: string,
   json = false
 ): Promise<void> {
-  const accounts = accountId ? [accountService.getById(accountId)].filter(Boolean) : accountService.getAll();
+  const accounts = accountId ? [accountService.getById(accountId)].filter((a): a is NonNullable<typeof a> => a !== null) : accountService.getAll();
 
   if (accounts.length === 0) {
     if (json) {
@@ -18,7 +18,7 @@ export async function handleDatasetsCommand(
   }
 
   const allDatasets = [];
-  for (const acc of accounts as any[]) {
+  for (const acc of accounts) {
     try {
       const client = accountService.getClientForAccount(acc.id);
       const list = await client.listDatasets(search);
