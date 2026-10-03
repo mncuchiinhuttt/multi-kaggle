@@ -1,0 +1,202 @@
+import React, { useState, useEffect } from "react";
+import { Send, CheckCircle2, MessageSquare, Timer, Lock, Bot } from "lucide-react";
+import { AppInfoSection } from "./AppInfoSection";
+
+export const SettingsTab: React.FC = () => {
+  const [botToken, setBotToken] = useState("");
+  const [chatId, setChatId] = useState("");
+  const [pollingInterval, setPollingInterval] = useState("60");
+  const [saved, setSaved] = useState(false);
+
+  const [versionInfo, setVersionInfo] = useState<any>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const loadSettingsAndVersion = () => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data) {
+          if (data.data.telegram_bot_token) setBotToken(data.data.telegram_bot_token);
+          if (data.data.telegram_chat_id) setChatId(data.data.telegram_chat_id);
+          if (data.data.polling_interval_seconds) setPollingInterval(data.data.polling_interval_seconds);
+        }
+      });
+
+    fetch("/api/version")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok) setVersionInfo(data.data);
+      });
+  };
+
+  useEffect(() => {
+    loadSettingsAndVersion();
+  }, []);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const res = await fetch("/api/version");
+      const data = await res.json();
+      if (data.ok) setVersionInfo(data.data);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        telegram_bot_token: botToken,
+        telegram_chat_id: chatId,
+        polling_interval_seconds: pollingInterval,
+      }),
+    });
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-6">
+      <div className="border border-border bg-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
+              Daemon & Bridge Settings
+            </h2>
+            <span className="text-xs px-2 py-0.5 font-mono bg-primary/10 text-primary border border-primary/30 uppercase">
+              System Configuration
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 font-mono">
+            Manage Telegram remote daemon, authenticated access guard & background telemetry loop
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground border-t sm:border-t-0 sm:border-l border-border pt-3 sm:pt-0 sm:pl-6">
+          <div>
+            <div className="text-[10px] uppercase text-muted-foreground">Bot Transport</div>
+            <div className="text-sm font-semibold text-foreground font-mono">Long-Polling</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-muted-foreground">Version</div>
+            <div className="text-sm font-semibold text-emerald-500 font-mono">
+              v{versionInfo?.currentVersion || "1.0.0"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <form onSubmit={handleSave} className="lg:col-span-2 border border-border bg-card p-6 sm:p-8 space-y-6">
+          <div className="space-y-2">
+            <label className="block text-xs font-mono font-medium text-foreground uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                Telegram Bot API Token
+              </span>
+              <span className="text-[10px] text-muted-foreground font-normal">Private Credential</span>
+            </label>
+            <input
+              type="password"
+              placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              className="w-full border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+            />
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Obtain from @BotFather. Daemon runs in direct long-polling mode without requiring webhooks or open ports.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-mono font-medium text-foreground uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-primary" />
+                Authorized Telegram Chat ID
+              </span>
+              <span className="text-[10px] text-muted-foreground font-normal">Security Guard</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 987654321"
+              value={chatId}
+              onChange={(e) => setChatId(e.target.value)}
+              className="w-full border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+            />
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Enforces chat ID authorization. Any non-matching Telegram users will be rejected immediately.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-mono font-medium text-foreground uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Timer className="h-3.5 w-3.5 text-primary" />
+                Telemetry Poller Interval (Seconds)
+              </span>
+              <span className="text-[10px] text-muted-foreground font-normal">Daemon Loop</span>
+            </label>
+            <input
+              type="number"
+              min="10"
+              max="600"
+              value={pollingInterval}
+              onChange={(e) => setPollingInterval(e.target.value)}
+              className="w-full border border-input bg-background px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-border">
+            {saved ? (
+              <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono">
+                <CheckCircle2 className="h-4 w-4" />
+                CONFIGURATION SAVED TO SQLITE
+              </span>
+            ) : (
+              <span />
+            )}
+
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground px-5 py-2.5 text-xs font-mono font-medium uppercase tracking-wider transition-colors shadow-sm"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Save Configuration
+            </button>
+          </div>
+        </form>
+
+        <div className="space-y-4">
+          <AppInfoSection
+            versionInfo={versionInfo}
+            checkingUpdate={checkingUpdate}
+            onCheckUpdate={handleCheckUpdate}
+          />
+
+          <div className="border border-border bg-card p-6 space-y-4">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+              <Bot className="h-4 w-4 text-primary" />
+              Telegram Commands
+            </h3>
+            <div className="space-y-2 text-xs font-mono">
+              <div className="p-2 bg-muted/40 border border-border">
+                <span className="font-bold text-foreground">/status</span> - 30h quota summary
+              </div>
+              <div className="p-2 bg-muted/40 border border-border">
+                <span className="font-bold text-foreground">/jobs</span> - Active kernel sessions
+              </div>
+              <div className="p-2 bg-muted/40 border border-border">
+                <span className="font-bold text-foreground">/cancel &lt;id&gt;</span> - Abort running job
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

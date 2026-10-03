@@ -1,0 +1,72 @@
+name: Release Standalone Binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            binary_name: multikaggle-linux-x64
+          - os: ubuntu-latest
+            target: bun-linux-arm64
+            binary_name: multikaggle-linux-arm64
+          - os: macos-latest
+            target: bun-darwin-arm64
+            binary_name: multikaggle-darwin-arm64
+          - os: macos-13
+            target: bun-darwin-x64
+            binary_name: multikaggle-darwin-x64
+          - os: windows-latest
+            target: bun-windows-x64
+            binary_name: multikaggle-windows-x64.exe
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies & Build Frontend
+        run: |
+          bun install
+          cd frontend && bun install && bun run build && cd ..
+
+      - name: Compile Standalone Executable
+        run: |
+          bun build --compile --target=${{ matrix.target }} ./src/cli/index.ts --outfile=./${{ matrix.binary_name }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary_name }}
+          path: ./${{ matrix.binary_name }}
+
+  publish-github-release:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./artifacts/**/*
+          generate_release_notes: true

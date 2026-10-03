@@ -1,0 +1,26 @@
+{
+  "name": "multi-kaggle",
+  "version": "1.0.0",
+  "description": "Lightweight Kaggle Multi-Account Manager with Telegram Bot, Web Dashboard and CLI",
+  "type": "module",
+  "bin": {
+    "multikaggle": "./src/cli/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "cli": "bun run src/cli/index.ts",
+    "test": "bun test",
+    "build:frontend": "cd frontend && bun install && bun run build",
+    "build": "bun run build:frontend"
+  },
+  "dependencies": {
+    "grammy": "^1.35.0",
+    "hono": "^4.7.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.4",
+    "typescript": "^5.8.2"
+  }
+}
