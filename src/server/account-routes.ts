@@ -150,6 +150,18 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
     }
   });
 
+  app.post("/api/accounts/:id/storage", async (c) => {
+    const id = c.req.param("id");
+    try {
+      const body = (await c.req.json()) as { usedGb?: number };
+      const used = Number(body.usedGb ?? 0);
+      accountService["db"].run("UPDATE accounts SET private_datasets_used_gb = ? WHERE id = ?", [used, id]);
+      return c.json({ ok: true, usedGb: used });
+    } catch (err: unknown) {
+      return c.json({ ok: false, error: "Failed to update storage" }, 500);
+    }
+  });
+
   app.delete("/api/accounts/:id", (c) => {
     const id = c.req.param("id");
     const deleted = accountService.delete(id);

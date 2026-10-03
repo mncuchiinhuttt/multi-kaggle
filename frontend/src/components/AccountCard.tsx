@@ -1,5 +1,5 @@
-import React from "react";
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Cpu, Globe, Zap, HardDrive, Database, Box } from "lucide-react";
+import React, { useState } from "react";
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Cpu, Globe, Zap, Database, Box, Edit3 } from "lucide-react";
 import type { Account } from "./AccountsTab";
 
 interface AccountCardProps {
@@ -7,6 +7,7 @@ interface AccountCardProps {
   isTesting: boolean;
   onTest: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdateUsedStorage?: (id: string, usedGb: number) => void;
 }
 
 export const AccountCard: React.FC<AccountCardProps> = ({
@@ -15,9 +16,27 @@ export const AccountCard: React.FC<AccountCardProps> = ({
   onTest,
   onDelete,
 }) => {
+  const [editingStorage, setEditingStorage] = useState(false);
+  const [customUsed, setCustomUsed] = useState((acc.privateDatasetsUsedGb ?? 0).toFixed(2));
+
   const gpuPercent = Math.min(100, Math.max(0, ((acc.gpuHoursRemaining ?? 30) / 30) * 100));
   const tpuPercent = Math.min(100, Math.max(0, ((acc.tpuHoursRemaining ?? 20) / 20) * 100));
-  const datasetPercent = Math.min(100, Math.max(0, (((acc.privateDatasetsUsedGb ?? 0) / (acc.privateDatasetsMaxGb ?? 214.75)) * 100)));
+  const usedGb = acc.privateDatasetsUsedGb ?? 0;
+  const maxGb = acc.privateDatasetsMaxGb ?? 214.75;
+  const datasetPercent = Math.min(100, Math.max(0, (usedGb / maxGb) * 100));
+
+  const handleSaveStorage = async () => {
+    const parsed = parseFloat(customUsed);
+    if (!isNaN(parsed) && parsed >= 0) {
+      await fetch(`/api/accounts/${acc.id}/storage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usedGb: parsed }),
+      });
+      setEditingStorage(false);
+      onTest(acc.id);
+    }
+  };
 
   return (
     <div className="border border-border bg-card hover:border-primary/50 transition-colors flex flex-col justify-between">
@@ -47,18 +66,43 @@ export const AccountCard: React.FC<AccountCardProps> = ({
         <div className="space-y-2.5 pt-1">
           {/* Private Datasets */}
           <div className="space-y-1">
-            <div className="flex justify-between text-xs font-mono">
+            <div className="flex justify-between text-xs font-mono items-center">
               <span className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
                 <Database className="h-3 w-3 text-cyan-500" /> Private Datasets
               </span>
-              <span className="text-foreground font-medium text-[11px]">
-                {(acc.privateDatasetsUsedGb ?? 0).toFixed(2)} GB / {acc.privateDatasetsMaxGb ?? 214.75} GB
-              </span>
+              <div className="flex items-center gap-1">
+                {editingStorage ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customUsed}
+                      onChange={(e) => setCustomUsed(e.target.value)}
+                      className="w-16 px-1 py-0.2 text-[11px] border border-border bg-background text-foreground font-mono"
+                    />
+                    <button
+                      onClick={handleSaveStorage}
+                      className="text-[10px] text-primary hover:underline font-bold"
+                    >
+                      SAVE
+                    </button>
+                  </div>
+                ) : (
+                  <span
+                    onClick={() => setEditingStorage(true)}
+                    className="text-foreground font-medium text-[11px] cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
+                    title="Click to adjust used storage"
+                  >
+                    {usedGb.toFixed(2)} GB / {maxGb} GB
+                    <Edit3 className="h-2.5 w-2.5 opacity-50" />
+                  </span>
+                )}
+              </div>
             </div>
             <div className="h-1.5 w-full bg-secondary overflow-hidden">
               <div
                 className="h-full bg-cyan-500 transition-all duration-300"
-                style={{ width: `${Math.max(2, datasetPercent)}%` }}
+                style={{ width: `${Math.max(usedGb > 0 ? 2 : 0, datasetPercent)}%` }}
               />
             </div>
           </div>

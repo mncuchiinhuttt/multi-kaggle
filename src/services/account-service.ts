@@ -71,6 +71,11 @@ export class AccountService {
       [id, input.label, input.username.trim(), encrypted, iv, input.proxyUrl ?? null, now, now]
     );
 
+    // Initial sync
+    setTimeout(() => {
+      this.testAccountConnection(id).catch(() => {});
+    }, 100);
+
     return {
       id,
       label: input.label,
@@ -113,12 +118,9 @@ export class AccountService {
       const datasets = await client.listDatasets("");
       let totalBytes = 0;
       for (const d of datasets) {
-        if (d.size) {
-          const num = parseFloat(d.size);
-          if (!isNaN(num)) totalBytes += num * 1024 * 1024;
-        }
+        totalBytes += d.bytes;
       }
-      const usedGb = Math.round((totalBytes / (1024 * 1024 * 1024)) * 100) / 100;
+      const usedGb = totalBytes / (1024 * 1024 * 1024);
       this.db.run("UPDATE accounts SET private_datasets_used_gb = ? WHERE id = ?", [usedGb, id]);
     } catch {}
 

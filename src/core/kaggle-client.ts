@@ -43,7 +43,7 @@ export class KaggleApiClient {
 
   async testCredentials(): Promise<{ ok: boolean; message: string }> {
     try {
-      const res = await this.request(`/datasets/list?mine=true&pageSize=1`, { method: "GET" });
+      const res = await this.request(`/datasets/list?user=${this.username}&pageSize=1`, { method: "GET" });
       if (res.status === 200) return { ok: true, message: "Credentials valid" };
       if (res.status === 401 || res.status === 403) {
         return { ok: false, message: "Authentication failed. Check API key or proxy." };
@@ -154,19 +154,29 @@ export class KaggleApiClient {
     }
   }
 
-  async listDatasets(search = ""): Promise<Array<{ ref: string; title: string; size: string }>> {
+  async listDatasets(search = ""): Promise<Array<{ ref: string; title: string; size: string; bytes: number }>> {
     try {
       const res = await this.request(
-        `/datasets/list?mine=true&search=${encodeURIComponent(search)}&pageSize=20`,
+        `/datasets/list?user=${this.username}&search=${encodeURIComponent(search)}&pageSize=50`,
         { method: "GET" }
       );
       if (!res.ok) return [];
-      const list = (await res.json()) as Array<{ ref?: string; title?: string; totalBytes?: number }>;
-      return list.map((d) => ({
-        ref: d.ref || "",
-        title: d.title || "",
-        size: d.totalBytes ? `${Math.round(d.totalBytes / 1024 / 1024)} MB` : "N/A",
-      }));
+      const list = (await res.json()) as Array<{
+        ref?: string;
+        title?: string;
+        titleNullable?: string;
+        totalBytes?: number;
+        totalBytesNullable?: number;
+      }>;
+      return list.map((d) => {
+        const bytes = d.totalBytesNullable ?? d.totalBytes ?? 0;
+        return {
+          ref: d.ref || "",
+          title: d.titleNullable || d.title || "",
+          size: bytes > 0 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : "N/A",
+          bytes,
+        };
+      });
     } catch {
       return [];
     }
