@@ -17,7 +17,7 @@ import { registerDatasetRoutes } from "./dataset-routes";
 import { registerJobRoutes } from "./job-routes";
 import { registerSettingsRoutes } from "./settings-routes";
 
-export function createApp(dbPath = "data/multi-kaggle.db") {
+export function createApp(dbPath?: string) {
   const db = initDatabase(dbPath);
   const masterSecret = process.env.MASTER_SECRET_KEY || "multi-kaggle-default-secret-key-32b";
 

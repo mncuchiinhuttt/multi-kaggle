@@ -43,13 +43,15 @@ export interface SettingRecord {
   key: string;
   value: string;
 }
+import { getDefaultDbPath } from "./storage-path";
 
-export function initDatabase(dbPath = "data/multi-kaggle.db"): Database {
-  if (dbPath !== ":memory:") {
-    mkdirSync(dirname(dbPath), { recursive: true });
+export function initDatabase(dbPath?: string): Database {
+  const targetPath = dbPath ?? getDefaultDbPath();
+  if (targetPath !== ":memory:") {
+    mkdirSync(dirname(targetPath), { recursive: true });
   }
 
-  const db = new Database(dbPath);
+  const db = new Database(targetPath);
   db.run("PRAGMA journal_mode = WAL;");
   db.run("PRAGMA foreign_keys = ON;");
 

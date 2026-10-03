@@ -140,8 +140,10 @@ multikaggle accounts add --label "Node-1" --username "user_one" --key "token_abc
 
 # Emergency abort running session
 multikaggle cancel <job_id>
-```
 
+# Update Multi-Kaggle binary to latest release (keeps all local data intact)
+multikaggle update
+```
 ---
 
 ### 4. Telegram Bot Remote Daemon

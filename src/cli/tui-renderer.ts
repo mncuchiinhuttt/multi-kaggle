@@ -19,6 +19,11 @@ export const TUI_ITEMS: TuiMenuItem[] = [
     desc: "Inspect available CLI dispatch, datasets & account options",
   },
   {
+    key: "update",
+    title: "Check & Install Latest Update",
+    desc: "Seamlessly upgrade binary to latest release keeping all data",
+  },
+  {
     key: "background",
     title: "Detach & Run in Background",
     desc: "Keep daemon active while freeing current terminal window",

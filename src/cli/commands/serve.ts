@@ -4,6 +4,7 @@ import * as readline from "node:readline";
 import type { Server } from "bun";
 import { createApp } from "@/server/index";
 import { checkAppUpdate } from "@/services/version-service";
+import { handleUpdateCommand } from "./update";
 import { c } from "../tui-colors";
 import { renderTuiScreen, TUI_ITEMS } from "../tui-renderer";
 
@@ -90,8 +91,12 @@ export async function runInteractiveTui(helpText: string, defaultPort = 6767): P
         stdinStream.once("keypress", () => {
           render();
         });
-      } else if (selected.key === "background") {
+      } else if (selected.key === "update") {
         cleanup();
+        if (serverInstance) serverInstance.stop();
+        handleUpdateCommand().then(() => process.exit(0));
+        return;
+      } else if (selected.key === "background") {
         console.log(`\n  ${c.emerald}${c.bold}✓ Multi-Kaggle daemon running in background.${c.reset}`);
         console.log(`  ${c.white}Access Web Dashboard:${c.reset} ${c.orange}${url}${c.reset}`);
         console.log(`  ${c.dim}Stop anytime via Web UI or kill port ${port}.${c.reset}\n`);

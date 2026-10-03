@@ -9,6 +9,7 @@ import { handleAccountsCommand, handleAddAccountCommand } from "./commands/accou
 import { handleJobsCommand, handleCancelCommand } from "./commands/jobs";
 import { handleOutputsCommand } from "./commands/outputs";
 import { handleDatasetsCommand } from "./commands/datasets";
+import { handleUpdateCommand } from "./commands/update";
 import { handleServeCommand, runInteractiveTui } from "./commands/serve";
 
 const HELP_TEXT = `
@@ -24,6 +25,7 @@ Usage:
   multikaggle accounts add [options]              Add new Kaggle account credentials
   multikaggle jobs [list]                         List recent/running jobs
   multikaggle cancel <job_id>                     Cancel a running kernel session
+  multikaggle update                              Check & install latest standalone update
 
 Options for 'run':
   --title <string>       Title of the kernel
@@ -71,7 +73,12 @@ async function main() {
     process.exit(0);
   }
 
-  const dbPath = process.env.MULTI_KAGGLE_DB || "data/multi-kaggle.db";
+  if (command === "update") {
+    await handleUpdateCommand();
+    return;
+  }
+
+  const dbPath = process.env.MULTI_KAGGLE_DB;
   const db = initDatabase(dbPath);
   const masterSecret = process.env.MASTER_SECRET_KEY || "multi-kaggle-default-secret-key-32b";
   const accountService = new AccountService(db, masterSecret);
