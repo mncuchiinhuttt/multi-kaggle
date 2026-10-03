@@ -10,7 +10,9 @@ export interface Account {
   proxyUrl: string | null;
   gpuHoursRemaining: number;
   tpuHoursRemaining?: number;
-  diskQuotaGb?: number;
+  privateDatasetsUsedGb?: number;
+  privateDatasetsMaxGb?: number;
+  privateModelsMaxGb?: number;
   status: "active" | "invalid" | "rate_limited";
 }
 
@@ -44,7 +46,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({ accounts, onRefresh })
     <div className="space-y-6">
       <AccountsHeader count={accounts.length} onAdd={() => setShowModal(true)} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {accounts.map((acc) => (
           <AccountCard
             key={acc.id}

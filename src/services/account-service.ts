@@ -17,7 +17,9 @@ export interface PublicAccount {
   proxyUrl: string | null;
   gpuHoursRemaining: number;
   tpuHoursRemaining: number;
-  diskQuotaGb: number;
+  privateDatasetsUsedGb: number;
+  privateDatasetsMaxGb: number;
+  privateModelsMaxGb: number;
   status: "active" | "invalid" | "rate_limited";
   createdAt: number;
   updatedAt: number;
@@ -41,7 +43,9 @@ export class AccountService {
       proxyUrl: r.proxy_url,
       gpuHoursRemaining: r.gpu_hours_remaining ?? 30.0,
       tpuHoursRemaining: r.tpu_hours_remaining ?? 20.0,
-      diskQuotaGb: r.disk_quota_gb ?? 100.0,
+      privateDatasetsUsedGb: r.private_datasets_used_gb ?? 0.0,
+      privateDatasetsMaxGb: r.private_datasets_max_gb ?? 214.75,
+      privateModelsMaxGb: r.private_models_max_gb ?? 214.75,
       status: r.status,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
@@ -58,8 +62,12 @@ export class AccountService {
     const { encrypted, iv } = encryptApiKey(input.apiKey, this.masterSecret);
 
     this.db.run(
-      `INSERT INTO accounts (id, label, username, api_key_encrypted, api_key_iv, proxy_url, gpu_hours_remaining, tpu_hours_remaining, disk_quota_gb, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 30.0, 20.0, 100.0, 'active', ?, ?)`,
+      `INSERT INTO accounts (
+        id, label, username, api_key_encrypted, api_key_iv, proxy_url, 
+        gpu_hours_remaining, tpu_hours_remaining, private_datasets_used_gb, 
+        private_datasets_max_gb, private_models_max_gb, status, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 30.0, 20.0, 0.0, 214.75, 214.75, 'active', ?, ?)`,
       [id, input.label, input.username.trim(), encrypted, iv, input.proxyUrl ?? null, now, now]
     );
 
@@ -70,7 +78,9 @@ export class AccountService {
       proxyUrl: input.proxyUrl ?? null,
       gpuHoursRemaining: 30.0,
       tpuHoursRemaining: 20.0,
-      diskQuotaGb: 100.0,
+      privateDatasetsUsedGb: 0.0,
+      privateDatasetsMaxGb: 214.75,
+      privateModelsMaxGb: 214.75,
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -97,6 +107,21 @@ export class AccountService {
     const client = this.getClientForAccount(id);
     const testResult = await client.testCredentials();
     const newStatus = testResult.ok ? "active" : "invalid";
+
+    // Auto-sync used datasets size in GB
+    try {
+      const datasets = await client.listDatasets("");
+      let totalBytes = 0;
+      for (const d of datasets) {
+        if (d.size) {
+          const num = parseFloat(d.size);
+          if (!isNaN(num)) totalBytes += num * 1024 * 1024;
+        }
+      }
+      const usedGb = Math.round((totalBytes / (1024 * 1024 * 1024)) * 100) / 100;
+      this.db.run("UPDATE accounts SET private_datasets_used_gb = ? WHERE id = ?", [usedGb, id]);
+    } catch {}
+
     this.db.run("UPDATE accounts SET status = ?, updated_at = ? WHERE id = ?", [
       newStatus,
       Date.now(),

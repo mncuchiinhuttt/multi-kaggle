@@ -11,7 +11,9 @@ export interface AccountRecord {
   proxy_url: string | null;
   gpu_hours_remaining: number;
   tpu_hours_remaining: number;
-  disk_quota_gb: number;
+  private_datasets_used_gb: number;
+  private_datasets_max_gb: number;
+  private_models_max_gb: number;
   status: "active" | "invalid" | "rate_limited";
   created_at: number;
   updated_at: number;
@@ -61,20 +63,28 @@ export function initDatabase(dbPath = "data/multi-kaggle.db"): Database {
       proxy_url TEXT,
       gpu_hours_remaining REAL DEFAULT 30.0,
       tpu_hours_remaining REAL DEFAULT 20.0,
-      disk_quota_gb REAL DEFAULT 100.0,
+      private_datasets_used_gb REAL DEFAULT 0.0,
+      private_datasets_max_gb REAL DEFAULT 214.75,
+      private_models_max_gb REAL DEFAULT 214.75,
       status TEXT CHECK(status IN ('active', 'invalid', 'rate_limited')) DEFAULT 'active',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
   `);
 
-  // Migrate accounts table if columns are missing
-  try {
-    db.run("ALTER TABLE accounts ADD COLUMN tpu_hours_remaining REAL DEFAULT 20.0;");
-  } catch {}
-  try {
-    db.run("ALTER TABLE accounts ADD COLUMN disk_quota_gb REAL DEFAULT 100.0;");
-  } catch {}
+  // Safe migrations
+  const migrations = [
+    "ALTER TABLE accounts ADD COLUMN tpu_hours_remaining REAL DEFAULT 20.0;",
+    "ALTER TABLE accounts ADD COLUMN private_datasets_used_gb REAL DEFAULT 0.0;",
+    "ALTER TABLE accounts ADD COLUMN private_datasets_max_gb REAL DEFAULT 214.75;",
+    "ALTER TABLE accounts ADD COLUMN private_models_max_gb REAL DEFAULT 214.75;",
+    "ALTER TABLE accounts ADD COLUMN disk_quota_gb REAL DEFAULT 214.75;",
+  ];
+  for (const sql of migrations) {
+    try {
+      db.run(sql);
+    } catch {}
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS jobs (
