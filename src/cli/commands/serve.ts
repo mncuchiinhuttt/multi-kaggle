@@ -1,7 +1,11 @@
 import { spawn } from "node:child_process";
+import * as tty from "node:tty";
 import * as readline from "node:readline";
 import type { Server } from "bun";
 import { createApp } from "@/server/index";
+import { checkAppUpdate } from "@/services/version-service";
+import { c } from "../tui-colors";
+import { renderTuiScreen, TUI_ITEMS } from "../tui-renderer";
 
 export interface ServeOptions {
   port?: number;
@@ -16,70 +20,90 @@ function openBrowser(url: string) {
 }
 
 export async function runInteractiveTui(helpText: string, defaultPort = 7890): Promise<void> {
-  let serverInstance: Server | null = null;
   const port = defaultPort;
   const url = `http://localhost:${port}`;
+  let serverInstance: Server | null = null;
 
-  const startServer = () => {
-    if (!serverInstance) {
-      const { app } = createApp();
-      serverInstance = Bun.serve({
-        port,
-        fetch: app.fetch,
-      });
-    }
-  };
-
-  startServer();
-
-  console.clear();
-  console.log(`
-┌────────────────────────────────────────────────────────┐
-│  MULTI-KAGGLE ORCHESTRATOR & FARM DAEMON (v1.0.0)      │
-│  Daemon status: ONLINE at ${url.padEnd(28)} │
-└────────────────────────────────────────────────────────┘
-
-  [1] Open Web UI Dashboard in Browser
-  [2] Print CLI Help & Command Manual
-  [3] Detach & Run in Background
-  [4] Shutdown & Exit
-
-`);
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  const { app } = createApp();
+  serverInstance = Bun.serve({
+    port,
+    fetch: app.fetch,
   });
 
-  const promptChoice = () => {
-    rl.question("  Select an action [1-4]: ", (ans) => {
-      const choice = ans.trim();
-      if (choice === "1") {
-        console.log(`\n  --> Opening ${url} in your default browser...`);
-        openBrowser(url);
-        setTimeout(promptChoice, 1000);
-      } else if (choice === "2") {
-        console.log(helpText);
-        promptChoice();
-      } else if (choice === "3") {
-        console.log(`\n  --> Multi-Kaggle daemon running in background.`);
-        console.log(`  --> Access Dashboard at ${url}`);
-        console.log(`  --> Shutdown anytime via Web UI or kill port ${port}.\n`);
-        rl.close();
-        process.exit(0);
-      } else if (choice === "4") {
-        console.log(`\n  --> Stopping Multi-Kaggle daemon... Goodbye!\n`);
-        rl.close();
-        if (serverInstance) serverInstance.stop();
-        process.exit(0);
-      } else {
-        console.log("  Invalid option. Please enter 1, 2, 3, or 4.");
-        promptChoice();
-      }
-    });
+  // Check version in background
+  const versionInfo = await checkAppUpdate().catch(() => null);
+
+  let selectedIndex = 0;
+  const render = () => renderTuiScreen(selectedIndex, url, versionInfo);
+  render();
+
+  // Create TTY raw mode stream for Arrow Keys
+  let stdinStream: tty.ReadStream;
+  try {
+    stdinStream = new tty.ReadStream(0);
+    stdinStream.setRawMode(true);
+  } catch {
+    // Fallback if not interactive TTY
+    console.log(`\nServer listening at ${url}`);
+    return;
+  }
+
+  readline.emitKeypressEvents(stdinStream);
+  stdinStream.resume();
+
+  const cleanup = () => {
+    try {
+      stdinStream.setRawMode(false);
+      stdinStream.pause();
+    } catch {}
   };
 
-  promptChoice();
+  stdinStream.on("keypress", (_str, key) => {
+    if (!key) return;
+
+    if (key.ctrl && key.name === "c") {
+      cleanup();
+      console.log(`\n  ${c.gray}Multi-Kaggle daemon stopped.${c.reset}\n`);
+      if (serverInstance) serverInstance.stop();
+      process.exit(0);
+    }
+
+    if (key.name === "up" || key.name === "k") {
+      selectedIndex = (selectedIndex - 1 + TUI_ITEMS.length) % TUI_ITEMS.length;
+      render();
+    } else if (key.name === "down" || key.name === "j") {
+      selectedIndex = (selectedIndex + 1) % TUI_ITEMS.length;
+      render();
+    } else if (key.name === "return" || key.name === "enter") {
+      const selected = TUI_ITEMS[selectedIndex];
+
+      if (selected.key === "web") {
+        console.log(`\n  ${c.orange}--> Opening ${url} in default browser...${c.reset}`);
+        openBrowser(url);
+        setTimeout(render, 1500);
+      } else if (selected.key === "help") {
+        cleanup();
+        console.clear();
+        console.log(helpText);
+        console.log(`\n  ${c.gray}Press any key to return to menu...${c.reset}`);
+        stdinStream.setRawMode(true);
+        stdinStream.once("keypress", () => {
+          render();
+        });
+      } else if (selected.key === "background") {
+        cleanup();
+        console.log(`\n  ${c.emerald}${c.bold}✓ Multi-Kaggle daemon running in background.${c.reset}`);
+        console.log(`  ${c.white}Access Web Dashboard:${c.reset} ${c.orange}${url}${c.reset}`);
+        console.log(`  ${c.dim}Stop anytime via Web UI or kill port ${port}.${c.reset}\n`);
+        process.exit(0);
+      } else if (selected.key === "exit") {
+        cleanup();
+        console.log(`\n  ${c.gray}Multi-Kaggle daemon stopped. Goodbye!${c.reset}\n`);
+        if (serverInstance) serverInstance.stop();
+        process.exit(0);
+      }
+    }
+  });
 }
 
 export async function handleServeCommand(options: ServeOptions): Promise<void> {
