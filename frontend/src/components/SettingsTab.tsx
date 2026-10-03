@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Send, CheckCircle2, MessageSquare, Timer, Lock, Bot } from "lucide-react";
+import { Send, CheckCircle2, MessageSquare, Timer, Lock } from "lucide-react";
 import { AppInfoSection } from "./AppInfoSection";
+import { SettingsSidebar } from "./SettingsSidebar";
 
 export const SettingsTab: React.FC = () => {
   const [botToken, setBotToken] = useState("");
@@ -177,24 +178,7 @@ export const SettingsTab: React.FC = () => {
             checkingUpdate={checkingUpdate}
             onCheckUpdate={handleCheckUpdate}
           />
-
-          <div className="border border-border bg-card p-6 space-y-4">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-              <Bot className="h-4 w-4 text-primary" />
-              Telegram Commands
-            </h3>
-            <div className="space-y-2 text-xs font-mono">
-              <div className="p-2 bg-muted/40 border border-border">
-                <span className="font-bold text-foreground">/status</span> - 30h quota summary
-              </div>
-              <div className="p-2 bg-muted/40 border border-border">
-                <span className="font-bold text-foreground">/jobs</span> - Active kernel sessions
-              </div>
-              <div className="p-2 bg-muted/40 border border-border">
-                <span className="font-bold text-foreground">/cancel &lt;id&gt;</span> - Abort running job
-              </div>
-            </div>
-          </div>
+          <SettingsSidebar />
         </div>
       </div>
     </div>

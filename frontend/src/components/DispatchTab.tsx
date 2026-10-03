@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Play, Cpu, Wifi, ChevronDown } from "lucide-react";
+import { Play, Cpu, Wifi } from "lucide-react";
 import type { Account } from "./AccountsTab";
+import { CustomSelect } from "./CustomSelect";
 import { DispatchDropzone } from "./DispatchDropzone";
 import { StrategySelector } from "./StrategySelector";
 
@@ -36,6 +37,10 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
       setStatusMsg({ ok: false, text: "Please upload a notebook (.ipynb) or Python script (.py)." });
       return;
     }
+    if (strategy === "manual" && !targetAccountId) {
+      setStatusMsg({ ok: false, text: "Please select a target account for manual routing." });
+      return;
+    }
     setLoading(true);
     setStatusMsg(null);
     try {
@@ -69,6 +74,12 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
       setLoading(false);
     }
   };
+
+  const accountOptions = accounts.map((a) => ({
+    value: a.id,
+    label: `${a.label} (@${a.username})`,
+    sublabel: `${a.gpuHoursRemaining.toFixed(1)}h GPU remaining`,
+  }));
 
   return (
     <div className="w-full space-y-6">
@@ -125,22 +136,12 @@ export const DispatchTab: React.FC<DispatchTabProps> = ({ accounts, onDispatched
             <label className="block text-xs font-mono font-medium text-foreground uppercase tracking-wider">
               Select Target Account
             </label>
-            <div className="relative">
-              <select
-                required
-                value={targetAccountId}
-                onChange={(e) => setTargetAccountId(e.target.value)}
-                className="w-full appearance-none border border-input bg-background px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-              >
-                <option value="">Select target account...</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.label} (@{a.username}) - {a.gpuHoursRemaining.toFixed(1)}h GPU left
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
-            </div>
+            <CustomSelect
+              options={accountOptions}
+              value={targetAccountId}
+              onChange={setTargetAccountId}
+              placeholder="Select target account from pool..."
+            />
           </div>
         )}
 
