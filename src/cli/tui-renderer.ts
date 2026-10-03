@@ -37,10 +37,13 @@ export function renderTuiScreen(
 ): void {
   process.stdout.write("\x1b[H\x1b[2J\x1b[3J"); // Clear screen & scrollback
 
+  const prefix = "  Daemon status: ONLINE at ";
+  const paddedUrl = url.padEnd(56 - prefix.length);
+
   console.log(`
 ${c.orange}${c.bold}┌────────────────────────────────────────────────────────┐
 │  MULTI-KAGGLE ORCHESTRATOR & FARM DAEMON (v1.0.0)      │
-│  Daemon status: ${c.emerald}ONLINE${c.orange} at ${c.white}${url.padEnd(28)}${c.orange}│
+│  Daemon status: ${c.emerald}ONLINE${c.orange} at ${c.white}${paddedUrl}${c.orange}│
 └────────────────────────────────────────────────────────┘${c.reset}`);
 
   // Release Update Alert if available
