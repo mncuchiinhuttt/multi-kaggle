@@ -189,7 +189,7 @@ export const AppNavbar: React.FC<AppNavbarProps> = ({
         open={showExitConfirm}
         title="Shutdown Multi-Kaggle Daemon"
         accountLabel="Server & Telegram Bot"
-        username="localhost:7890"
+        username={typeof window !== "undefined" ? window.location.host : "localhost:6767"}
         deleting={isShuttingDown}
         onConfirm={handleShutdown}
         onClose={() => setShowExitConfirm(false)}

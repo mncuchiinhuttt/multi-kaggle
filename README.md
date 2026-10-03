@@ -27,7 +27,7 @@ Chỉ cần gõ:
 ```bash
 multikaggle
 ```
-*(Lệnh này tự động khởi động server daemon nền và mở ngay trình duyệt tại `http://localhost:7890`)*.
+*(Lệnh này tự động khởi động server daemon nền và mở ngay trình duyệt tại `http://localhost:6767`)*.
 
 Nếu muốn chỉ định port khác:
 ```bash
@@ -37,7 +37,7 @@ multikaggle serve --port 8080 --no-open
 ### B. Direct Browser OAuth Authentication
 Người dùng có thể đăng nhập bất kỳ tài khoản Kaggle nào thông qua trình duyệt khác hoặc cửa sổ ẩn danh (Incognito) bằng cách truy cập:
 ```
-http://localhost:7890/auth
+http://localhost:6767/auth
 ```
 Hệ thống sẽ tự động chuyển hướng đến trang xác thực OAuth của Kaggle và tự động callback về ứng dụng để thêm tài khoản vào danh sách.
 
@@ -82,7 +82,7 @@ multikaggle cancel <job_id>
 
 ## 3. Tính năng cốt lõi
 
-- **Cổng mặc định**: `http://localhost:7890` (tránh xung đột với các web server cổng 3000 khác).
+- **Cổng mặc định**: `http://localhost:6767` (tránh xung đột với các web server cổng 3000 khác).
 - **Direct OAuth URL**: Hỗ trợ endpoint `/auth` cho phép mở link ở bất kỳ trình duyệt nào.
 - **Hỗ trợ phần cứng đa dạng**: GPU T4x2 (30h/tuần) & TPU v3-8 128GB HBM (20h/tuần) & CPU không giới hạn.
 - **Tải file Output**: Hỗ trợ tải trực tiếp các file kết quả (.pt, .csv, log) từ Web UI hoặc CLI.

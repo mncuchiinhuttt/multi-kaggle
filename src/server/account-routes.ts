@@ -27,14 +27,14 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
 
   // Direct Browser OAuth Link generator (e.g. for any browser or private window)
   app.get("/api/oauth/url", (c) => {
-    const host = c.req.header("host") || "localhost:7890";
+    const host = c.req.header("host") || "localhost:6767";
     const info = buildKaggleOAuthUrl(host);
     return c.json({ ok: true, data: info });
   });
 
-  // Direct OAuth redirect endpoint (e.g. user visits localhost:7890/auth)
+  // Direct OAuth redirect endpoint (e.g. user visits localhost:6767/auth)
   app.get("/auth", (c) => {
-    const host = c.req.header("host") || "localhost:7890";
+    const host = c.req.header("host") || "localhost:6767";
     const info = buildKaggleOAuthUrl(host);
     return c.redirect(info.authUrl);
   });

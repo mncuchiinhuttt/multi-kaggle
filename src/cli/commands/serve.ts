@@ -19,7 +19,7 @@ function openBrowser(url: string) {
   } catch {}
 }
 
-export async function runInteractiveTui(helpText: string, defaultPort = 7890): Promise<void> {
+export async function runInteractiveTui(helpText: string, defaultPort = 6767): Promise<void> {
   const port = defaultPort;
   const url = `http://localhost:${port}`;
   let serverInstance: Server | null = null;
@@ -107,10 +107,9 @@ export async function runInteractiveTui(helpText: string, defaultPort = 7890): P
 }
 
 export async function handleServeCommand(options: ServeOptions): Promise<void> {
-  const port = options.port || Number(process.env.PORT || 7890);
+  const port = options.port || Number(process.env.PORT || 6767);
   const { app } = createApp();
   const url = `http://localhost:${port}`;
-
   Bun.serve({
     port,
     fetch: app.fetch,

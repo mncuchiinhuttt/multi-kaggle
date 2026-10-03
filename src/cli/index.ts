@@ -16,7 +16,7 @@ Multi-Kaggle CLI - Lightweight Kaggle multi-account manager & dispatcher
 
 Usage:
   multikaggle                                     Launch Interactive TUI Menu
-  multikaggle serve [--port 7890] [--no-open]     Launch Web UI Server directly
+  multikaggle serve [--port 6767] [--no-open]     Launch Web UI Server directly
   multikaggle run <file.ipynb|file.py> [options]  Dispatch notebook to Kaggle
   multikaggle outputs <job_id> [--download <dir>] Inspect or download outputs from a run
   multikaggle datasets [list] [--search <term>]   List or search datasets across accounts
@@ -44,7 +44,7 @@ async function main() {
 
   // Default: When user runs bare 'multikaggle', show interactive TUI menu
   if (!command) {
-    await runInteractiveTui(HELP_TEXT, 7890);
+    await runInteractiveTui(HELP_TEXT, 6767);
     return;
   }
 
