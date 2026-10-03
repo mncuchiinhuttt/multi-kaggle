@@ -5,6 +5,7 @@ import {
   clearLocalKaggleCredentials,
   isKaggleCliInstalled,
   readLocalKaggleCredentials,
+  startKaggleCliLogin,
 } from "@/services/cli-auth-service";
 
 const CreateAccountSchema = z.object({
@@ -20,7 +21,6 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
     return c.json({ ok: true, data: accounts });
   });
 
-  // Check if Kaggle CLI is installed and if ~/.kaggle contains active credentials
   app.get("/api/accounts/cli-status", async (c) => {
     const installed = await isKaggleCliInstalled();
     const creds = readLocalKaggleCredentials();
@@ -33,6 +33,16 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
         credentialSource: creds?.source || null,
       },
     });
+  });
+
+  // Launch 'kaggle auth login --force' in browser with 1 click
+  app.post("/api/accounts/cli-login", async (c) => {
+    const installed = await isKaggleCliInstalled();
+    if (!installed) {
+      return c.json({ ok: false, error: "Kaggle CLI is not installed on the system." }, 400);
+    }
+    const result = startKaggleCliLogin();
+    return c.json(result);
   });
 
   // Import detected ~/.kaggle credentials, then clear local ~/.kaggle for next login
@@ -58,7 +68,6 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
         proxyUrl: body.proxyUrl || null,
       });
 
-      // Clear local credentials so next 'kaggle auth login' starts clean
       clearLocalKaggleCredentials();
 
       return c.json({

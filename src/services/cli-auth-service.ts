@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -9,9 +9,8 @@ export interface KaggleCliAuthCredentials {
   source: "credentials.json" | "kaggle.json" | "access_token";
 }
 
-/**
- * Checks if kaggle CLI is installed on the host machine.
- */
+let activeLoginProcess: ChildProcess | null = null;
+
 export async function isKaggleCliInstalled(): Promise<boolean> {
   const { promise, resolve } = Promise.withResolvers<boolean>();
   const proc = spawn("kaggle", ["--version"]);
@@ -20,13 +19,9 @@ export async function isKaggleCliInstalled(): Promise<boolean> {
   return promise;
 }
 
-/**
- * Reads ~/.kaggle credentials if present.
- */
 export function readLocalKaggleCredentials(): KaggleCliAuthCredentials | null {
   const kaggleDir = join(homedir(), ".kaggle");
 
-  // Check credentials.json (OAuth format from kaggle auth login)
   const credsPath = join(kaggleDir, "credentials.json");
   if (existsSync(credsPath)) {
     try {
@@ -43,7 +38,6 @@ export function readLocalKaggleCredentials(): KaggleCliAuthCredentials | null {
     }
   }
 
-  // Check kaggle.json (API key token format)
   const jsonPath = join(kaggleDir, "kaggle.json");
   if (existsSync(jsonPath)) {
     try {
@@ -63,13 +57,9 @@ export function readLocalKaggleCredentials(): KaggleCliAuthCredentials | null {
   return null;
 }
 
-/**
- * Clears ~/.kaggle credentials after successful import to prepare for next account login.
- */
 export function clearLocalKaggleCredentials(): boolean {
   const kaggleDir = join(homedir(), ".kaggle");
   let cleared = false;
-
   const targets = ["credentials.json", "access_token", "kaggle.json"];
   for (const t of targets) {
     const p = join(kaggleDir, t);
@@ -82,6 +72,32 @@ export function clearLocalKaggleCredentials(): boolean {
       }
     }
   }
-
   return cleared;
+}
+
+/**
+ * Triggers 'kaggle auth login --force' directly from backend, launching the default browser.
+ */
+export function startKaggleCliLogin(): { ok: boolean; message: string } {
+  if (activeLoginProcess && !activeLoginProcess.killed) {
+    return { ok: true, message: "Kaggle login process is already running in browser" };
+  }
+
+  try {
+    const proc = spawn("kaggle", ["auth", "login", "--force"], {
+      detached: true,
+      stdio: "ignore",
+    });
+
+    activeLoginProcess = proc;
+    proc.on("close", () => {
+      activeLoginProcess = null;
+    });
+    proc.unref();
+
+    return { ok: true, message: "Browser opened for Kaggle OAuth login" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to spawn kaggle auth login";
+    return { ok: false, message: msg };
+  }
 }

@@ -1,5 +1,5 @@
-import React from "react";
-import { Terminal, CheckCircle2, RefreshCw, LogIn, AlertCircle } from "lucide-react";
+import React, { useState } from "react";
+import { Terminal, CheckCircle2, RefreshCw, LogIn, ExternalLink } from "lucide-react";
 
 interface CliAuthSectionProps {
   cliStatus: {
@@ -19,6 +19,37 @@ export const CliAuthSection: React.FC<CliAuthSectionProps> = ({
   onImport,
   onRefreshStatus,
 }) => {
+  const [launching, setLaunching] = useState(false);
+  const [launchMsg, setLaunchMsg] = useState<string | null>(null);
+
+  const handleLaunchLogin = async () => {
+    setLaunching(true);
+    setLaunchMsg(null);
+    try {
+      const res = await fetch("/api/accounts/cli-login", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setLaunchMsg("Browser launched! Complete sign-in on Kaggle, then click 'Import'.");
+        // Start polling for credentials
+        const interval = setInterval(async () => {
+          const statusRes = await fetch("/api/accounts/cli-status");
+          const statusData = await statusRes.json();
+          if (statusData.ok && statusData.data.hasLocalCredentials) {
+            onRefreshStatus();
+            clearInterval(interval);
+          }
+        }, 2000);
+        setTimeout(() => clearInterval(interval), 60000);
+      } else {
+        setLaunchMsg(`Error: ${data.error || "Failed to start login"}`);
+      }
+    } catch {
+      setLaunchMsg("Failed to connect to backend");
+    } finally {
+      setLaunching(false);
+    }
+  };
+
   if (!cliStatus?.cliInstalled) {
     return (
       <div className="p-4 border border-border bg-muted/20 space-y-2 text-xs font-mono">
@@ -27,7 +58,7 @@ export const CliAuthSection: React.FC<CliAuthSectionProps> = ({
           KAGGLE CLI NOT DETECTED
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Install official CLI (<code className="text-primary font-bold">pip install kaggle</code>) to enable 1-click OAuth terminal login.
+          Install official CLI (<code className="text-primary font-bold">pip install kaggle</code>) to enable 1-click OAuth login.
         </p>
       </div>
     );
@@ -71,15 +102,29 @@ export const CliAuthSection: React.FC<CliAuthSectionProps> = ({
           </button>
         </div>
       ) : (
-        <div className="space-y-2 text-xs">
+        <div className="space-y-3 text-xs">
           <p className="text-muted-foreground text-[11px]">
-            To authenticate an account with official Kaggle OAuth:
+            Authenticate with official Kaggle OAuth via your browser:
           </p>
-          <div className="p-2.5 bg-black text-emerald-400 border border-border text-[11px] select-all">
-            $ kaggle auth login
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            Complete the browser sign-in, then click <span className="text-primary font-bold">Check CLI</span> to import credentials. App will auto-wipe local cache so you can log in to your next account.
+
+          <button
+            type="button"
+            onClick={handleLaunchLogin}
+            disabled={launching}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-bold uppercase tracking-wider transition-colors shadow-sm disabled:opacity-50"
+          >
+            <ExternalLink className="h-4 w-4" />
+            {launching ? "Opening Browser..." : "Launch Kaggle OAuth in Browser"}
+          </button>
+
+          {launchMsg && (
+            <p className="text-[11px] text-primary font-medium animate-pulse">
+              {launchMsg}
+            </p>
+          )}
+
+          <p className="text-[10px] text-muted-foreground pt-1 border-t border-border">
+            Clicking launches <code className="text-foreground font-semibold">kaggle auth login --force</code> in the background. App will auto-detect when sign-in finishes, import your account, and clear the session.
           </p>
         </div>
       )}
