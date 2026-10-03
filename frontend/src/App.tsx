@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AccountsTab, type Account } from "@/components/AccountsTab";
 import { AppNavbar } from "@/components/AppNavbar";
 import { DispatchTab } from "@/components/DispatchTab";
+import { DonateModal } from "@/components/DonateModal";
 import { JobsTab, type Job } from "@/components/JobsTab";
 import { KpiStrip } from "@/components/KpiStrip";
 import { SettingsTab } from "@/components/SettingsTab";
@@ -11,6 +12,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<"accounts" | "dispatch" | "jobs" | "usage" | "settings">("accounts");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [showDonate, setShowDonate] = useState(false);
   const [isDark, setIsDark] = useState<boolean>(() => {
     return localStorage.getItem("theme") === "light" ? false : true;
   });
@@ -62,6 +64,7 @@ export function App() {
         runningJobsCount={runningJobsCount}
         isDark={isDark}
         setIsDark={setIsDark}
+        onOpenDonate={() => setShowDonate(true)}
       />
 
       <KpiStrip accounts={accounts} runningJobsCount={runningJobsCount} />
@@ -81,6 +84,8 @@ export function App() {
         {activeTab === "usage" && <UsageTab />}
         {activeTab === "settings" && <SettingsTab />}
       </main>
+
+      <DonateModal open={showDonate} onClose={() => setShowDonate(false)} />
     </div>
   );
 }
