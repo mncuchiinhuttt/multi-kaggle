@@ -32,7 +32,8 @@ export const UsageTab: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/analytics?days=154");
+      // 52 weeks * 7 days = 364 days (Full Year Heatmap like GitHub)
+      const res = await fetch("/api/analytics?days=364");
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
         throw new Error("Server returned non-JSON response. Please ensure backend is updated and restarted.");
