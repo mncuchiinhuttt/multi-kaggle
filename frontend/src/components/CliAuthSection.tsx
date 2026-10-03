@@ -1,9 +1,13 @@
 import React, { useState } from "react";
-import { Terminal, CheckCircle2, RefreshCw, LogIn, ExternalLink, Globe, Copy, Check } from "lucide-react";
+import { Terminal, CheckCircle2, RefreshCw, LogIn, ExternalLink, Globe, Copy, Check, ArrowUpCircle } from "lucide-react";
 
 interface CliAuthSectionProps {
   cliStatus: {
     cliInstalled: boolean;
+    cliVersion?: string | null;
+    latestCliVersion?: string | null;
+    hasCliUpdate?: boolean;
+    pipCommand?: string;
     hasLocalCredentials: boolean;
     detectedUsername: string | null;
     credentialSource: string | null;
@@ -20,7 +24,8 @@ export const CliAuthSection: React.FC<CliAuthSectionProps> = ({
   onRefreshStatus,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [directAuthUrl, setDirectAuthUrl] = useState<string | null>(null);
+  const [updatingCli, setUpdatingCli] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
 
   const directLink = `${window.location.origin}/auth`;
 
@@ -30,12 +35,30 @@ export const CliAuthSection: React.FC<CliAuthSectionProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleUpgradeCli = async () => {
+    setUpdatingCli(true);
+    setUpdateMsg(null);
+    try {
+      const res = await fetch("/api/accounts/cli-upgrade", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setUpdateMsg("Kaggle CLI updated successfully!");
+        onRefreshStatus();
+      } else {
+        setUpdateMsg(`Update failed: ${data.message || "Check terminal permissions"}`);
+      }
+    } catch {
+      setUpdateMsg("Network error connecting to backend updater");
+    } finally {
+      setUpdatingCli(false);
+    }
+  };
+
   const handleOpenDirect = async () => {
     try {
       const res = await fetch("/api/oauth/url");
       const data = await res.json();
       if (data.ok && data.data?.authUrl) {
-        setDirectAuthUrl(data.data.authUrl);
         window.open(data.data.authUrl, "_blank");
       } else {
         window.open("/auth", "_blank");
@@ -60,6 +83,47 @@ export const CliAuthSection: React.FC<CliAuthSectionProps> = ({
           <RefreshCw className="h-3 w-3" /> Check Session
         </button>
       </div>
+
+      {/* CLI Version & Outdated Alert Banner */}
+      {cliStatus?.cliInstalled && (
+        <div className="p-2.5 bg-secondary/40 border border-border text-[11px] space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground flex items-center gap-1.5">
+              <Terminal className="h-3.5 w-3.5 text-primary" />
+              Kaggle CLI: <span className="font-bold text-foreground">v{cliStatus.cliVersion || "Unknown"}</span>
+            </span>
+            {cliStatus.hasCliUpdate ? (
+              <span className="text-amber-500 font-bold flex items-center gap-1 text-[10px]">
+                <ArrowUpCircle className="h-3 w-3" /> Update to v{cliStatus.latestCliVersion}
+              </span>
+            ) : (
+              <span className="text-emerald-500 text-[10px]">Up to date</span>
+            )}
+          </div>
+
+          {cliStatus.hasCliUpdate && (
+            <div className="flex items-center justify-between pt-1 border-t border-border">
+              <span className="text-[10px] text-muted-foreground font-sans">
+                Outdated Kaggle CLI can cause OAuth browser handshake issues.
+              </span>
+              <button
+                type="button"
+                onClick={handleUpgradeCli}
+                disabled={updatingCli}
+                className="px-2.5 py-0.5 bg-primary hover:bg-primary-hover text-primary-foreground text-[10px] uppercase font-bold transition-colors disabled:opacity-50"
+              >
+                {updatingCli ? "Updating..." : "Update via Pip"}
+              </button>
+            </div>
+          )}
+
+          {updateMsg && (
+            <div className="text-[10px] text-primary pt-0.5 font-bold">
+              {updateMsg}
+            </div>
+          )}
+        </div>
+      )}
 
       {cliStatus?.hasLocalCredentials ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30">

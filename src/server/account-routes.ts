@@ -7,6 +7,7 @@ import {
   readLocalKaggleCredentials,
   startKaggleCliLogin,
 } from "@/services/cli-auth-service";
+import { checkKaggleCliVersion, updateKaggleCli } from "@/services/cli-version-service";
 import {
   buildKaggleOAuthUrl,
   handleKaggleOAuthCallback,
@@ -78,12 +79,16 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
   });
 
   app.get("/api/accounts/cli-status", async (c) => {
-    const installed = await isKaggleCliInstalled();
+    const cliVersion = await checkKaggleCliVersion();
     const creds = readLocalKaggleCredentials();
     return c.json({
       ok: true,
       data: {
-        cliInstalled: installed,
+        cliInstalled: cliVersion.installed,
+        cliVersion: cliVersion.currentVersion,
+        latestCliVersion: cliVersion.latestVersion,
+        hasCliUpdate: cliVersion.hasUpdate,
+        pipCommand: cliVersion.pipCommand,
         hasLocalCredentials: Boolean(creds),
         detectedUsername: creds?.username || null,
         credentialSource: creds?.source || null,
@@ -91,6 +96,10 @@ export function registerAccountRoutes(app: Hono, accountService: AccountService)
     });
   });
 
+  app.post("/api/accounts/cli-upgrade", async (c) => {
+    const result = await updateKaggleCli();
+    return c.json(result);
+  });
   app.post("/api/accounts/cli-login", async (c) => {
     const installed = await isKaggleCliInstalled();
     if (!installed) {
