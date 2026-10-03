@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { AccountCard } from "./AccountCard";
 import { AccountsHeader } from "./AccountsHeader";
 import { AddAccountModal } from "./AddAccountModal";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 
 export interface Account {
   id: string;
@@ -24,6 +25,8 @@ interface AccountsTabProps {
 export const AccountsTab: React.FC<AccountsTabProps> = ({ accounts, onRefresh }) => {
   const [showModal, setShowModal] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleTest = async (id: string) => {
     setTestingId(id);
@@ -35,10 +38,15 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({ accounts, onRefresh })
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Delete this Kaggle account?")) {
-      await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+  const confirmDelete = async () => {
+    if (!deletingAccount) return;
+    setIsDeleting(true);
+    try {
+      await fetch(`/api/accounts/${deletingAccount.id}`, { method: "DELETE" });
+      setDeletingAccount(null);
       onRefresh();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -53,7 +61,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({ accounts, onRefresh })
             acc={acc}
             isTesting={testingId === acc.id}
             onTest={handleTest}
-            onDelete={handleDelete}
+            onDelete={() => setDeletingAccount(acc)}
           />
         ))}
       </div>
@@ -64,6 +72,15 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({ accounts, onRefresh })
           onSuccess={onRefresh}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={Boolean(deletingAccount)}
+        username={deletingAccount?.username}
+        accountLabel={deletingAccount?.label}
+        deleting={isDeleting}
+        onConfirm={confirmDelete}
+        onClose={() => setDeletingAccount(null)}
+      />
     </div>
   );
 };

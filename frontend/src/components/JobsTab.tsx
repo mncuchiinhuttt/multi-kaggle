@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Terminal, StopCircle, RefreshCw, Download } from "lucide-react";
+import { Terminal, StopCircle, Download } from "lucide-react";
 import { OutputsModal } from "./OutputsModal";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { JobsHeader } from "./JobsHeader";
 
 export interface Job {
   id: string;
@@ -26,11 +28,18 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
   const [selectedLog, setSelectedLog] = useState<string | null>(null);
   const [selectedOutputs, setSelectedOutputs] = useState<Array<{ name: string; url: string; size?: number }> | null>(null);
   const [loadingOutputs, setLoadingOutputs] = useState<string | null>(null);
+  const [cancelingJob, setCancelingJob] = useState<Job | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
 
-  const handleCancel = async (id: string) => {
-    if (confirm("Cancel this running kernel on Kaggle?")) {
-      await fetch(`/api/jobs/${id}/cancel`, { method: "POST" });
+  const confirmCancel = async () => {
+    if (!cancelingJob) return;
+    setIsCanceling(true);
+    try {
+      await fetch(`/api/jobs/${cancelingJob.id}/cancel`, { method: "POST" });
+      setCancelingJob(null);
       onRefresh();
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -68,26 +77,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-border pb-4">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
-            Execution Log & Monitoring
-            <span className="text-xs px-2 py-0.5 font-mono bg-secondary text-muted-foreground border border-border">
-              {jobs.length} jobs
-            </span>
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time status tracking, duration telemetry & kernel stdout/stderr streams
-          </p>
-        </div>
-        <button
-          onClick={onRefresh}
-          className="inline-flex items-center gap-1.5 border border-border bg-secondary hover:bg-secondary/80 px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-foreground transition-colors"
-        >
-          <RefreshCw className="h-3 w-3" />
-          REFRESH
-        </button>
-      </div>
+      <JobsHeader count={jobs.length} onRefresh={onRefresh} />
 
       <div className="border border-border bg-card overflow-x-auto">
         <table className="w-full text-left text-xs text-muted-foreground">
@@ -149,7 +139,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
                     )}
                     {(job.status === "running" || job.status === "queued") && (
                       <button
-                        onClick={() => handleCancel(job.id)}
+                        onClick={() => setCancelingJob(job)}
                         className="inline-flex items-center gap-1 text-destructive hover:underline uppercase text-[11px] font-medium"
                       >
                         <StopCircle className="h-3 w-3" />
@@ -189,6 +179,16 @@ export const JobsTab: React.FC<JobsTabProps> = ({ jobs, onRefresh }) => {
       {selectedOutputs && (
         <OutputsModal outputs={selectedOutputs} onClose={() => setSelectedOutputs(null)} />
       )}
+
+      <ConfirmDeleteDialog
+        open={Boolean(cancelingJob)}
+        title="Abort Kernel Execution"
+        username={cancelingJob?.kernel_slug}
+        accountLabel={cancelingJob?.title}
+        deleting={isCanceling}
+        onConfirm={confirmCancel}
+        onClose={() => setCancelingJob(null)}
+      />
     </div>
   );
 };
