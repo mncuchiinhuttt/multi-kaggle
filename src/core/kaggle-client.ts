@@ -194,4 +194,24 @@ export class KaggleApiClient {
       return [];
     }
   }
+
+  async listModels(search = ""): Promise<Array<{ ref: string; title: string }>> {
+    try {
+      const res = await this.request(`/models/list?search=${encodeURIComponent(search)}&pageSize=20`, {
+        method: "GET",
+      });
+      if (!res.ok) return [];
+      const json: unknown = await res.json();
+      if (json && typeof json === "object" && "models" in json && Array.isArray(json.models)) {
+        return json.models.map((m: unknown) => {
+          const ref = m && typeof m === "object" && "ref" in m && typeof m.ref === "string" ? m.ref : "";
+          const title = m && typeof m === "object" && "title" in m && typeof m.title === "string" ? m.title : "";
+          return { ref, title };
+        });
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
 }

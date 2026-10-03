@@ -132,6 +132,8 @@ multikaggle outputs <job_id> --download ./artifacts/
 # Search datasets across connected accounts
 multikaggle datasets --search "imagenet"
 
+# Search models across connected accounts
+multikaggle models --search "llama"
 # List account statuses & remaining quotas
 multikaggle accounts
 
@@ -156,6 +158,7 @@ Configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in the Settings tab to con
 | `/jobs` | List active sessions, run duration, and assigned hardware. |
 | `/outputs <id>` | Direct download links to generated artifacts sent to your chat. |
 | `/datasets [query]` | Query private and public datasets across accounts. |
+| `/models [query]` | Query Kaggle models across accounts. |
 | `/cancel <id>` | Immediately terminate a running kernel to rescue GPU/TPU allowance. |
 
 *The bot runs via native **Long-Polling** (`grammY`), requiring zero public IP, domain, or webhook configuration.*

@@ -9,6 +9,7 @@ import { handleAccountsCommand, handleAddAccountCommand } from "./commands/accou
 import { handleJobsCommand, handleCancelCommand } from "./commands/jobs";
 import { handleOutputsCommand } from "./commands/outputs";
 import { handleDatasetsCommand } from "./commands/datasets";
+import { handleModelsCommand } from "./commands/models";
 import { handleUpdateCommand } from "./commands/update";
 import { handleServeCommand, runInteractiveTui } from "./commands/serve";
 
@@ -21,7 +22,7 @@ Usage:
   multikaggle run <file.ipynb|file.py> [options]  Dispatch notebook to Kaggle
   multikaggle outputs <job_id> [--download <dir>] Inspect or download outputs from a run
   multikaggle datasets [list] [--search <term>]   List or search datasets across accounts
-  multikaggle accounts [list]                     List configured accounts & quotas
+  multikaggle models [list] [--search <term>]     List or search models across accounts
   multikaggle accounts add [options]              Add new Kaggle account credentials
   multikaggle jobs [list]                         List recent/running jobs
   multikaggle cancel <job_id>                     Cancel a running kernel session
@@ -158,6 +159,17 @@ async function main() {
         strict: false,
       });
       await handleDatasetsCommand(accountService, values.search as string | undefined, values.account as string | undefined, Boolean(values.json));
+    } else if (command === "models") {
+      const { values } = parseArgs({
+        args: args.slice(1),
+        options: {
+          search: { type: "string" },
+          account: { type: "string" },
+          json: { type: "boolean" },
+        },
+        strict: false,
+      });
+      await handleModelsCommand(accountService, values.search as string | undefined, values.account as string | undefined, Boolean(values.json));
     } else if (command === "accounts") {
       const sub = args[1];
       if (sub === "add") {
