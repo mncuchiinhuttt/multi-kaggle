@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BarChart3, RefreshCw } from "lucide-react";
+import { BarChart3, RefreshCw, AlertCircle } from "lucide-react";
 import { HeatmapGrid } from "./HeatmapGrid";
 import { UsageSummaryCards } from "./UsageSummaryCards";
 
@@ -25,15 +25,28 @@ export interface AnalyticsSummary {
 
 export const UsageTab: React.FC = () => {
   const [data, setData] = useState<AnalyticsSummary | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAnalytics = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/analytics?days=154"); // 22 weeks of 7 days
+      const res = await fetch("/api/analytics?days=154");
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("Server returned non-JSON response. Please ensure backend is updated and restarted.");
+      }
       const json = await res.json();
-      if (json.ok) setData(json.data);
-    } catch {} finally {
+      if (json.ok && json.data) {
+        setData(json.data);
+      } else {
+        throw new Error(json.error || "Failed to retrieve telemetry data");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load compute analytics";
+      setError(msg);
+    } finally {
       setLoading(false);
     }
   };
@@ -42,13 +55,35 @@ export const UsageTab: React.FC = () => {
     fetchAnalytics();
   }, []);
 
-  if (!data) {
+  if (loading && !data) {
     return (
-      <div className="p-8 text-center text-xs font-mono text-muted-foreground">
-        Loading compute analytics...
+      <div className="p-12 text-center text-xs font-mono text-muted-foreground flex flex-col items-center justify-center space-y-2">
+        <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+        <span>Aggregating compute history & GPU/TPU hours telemetry...</span>
       </div>
     );
   }
+
+  if (error && !data) {
+    return (
+      <div className="border border-destructive/30 bg-destructive/10 p-6 text-center space-y-3 font-mono text-xs text-destructive">
+        <div className="flex items-center justify-center gap-2 font-bold uppercase">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+        <div>
+          <button
+            onClick={fetchAnalytics}
+            className="px-4 py-1.5 bg-destructive text-destructive-foreground font-mono text-xs uppercase font-bold"
+          >
+            Retry Request
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   return (
     <div className="w-full space-y-6">
