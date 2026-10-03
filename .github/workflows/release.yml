@@ -36,10 +36,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Dependencies & Build Frontend
+      - name: Build Frontend & Embed Assets
         run: |
           bun install
           cd frontend && bun install && bun run build && cd ..
+          bun run scripts/generate-embedded-assets.ts
 
       - name: Compile Standalone Executable
         run: |
@@ -69,4 +70,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ./artifacts/**/*
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md

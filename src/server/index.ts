@@ -10,6 +10,7 @@ import { AnalyticsService } from "@/services/analytics-service";
 import { KernelService } from "@/services/kernel-service";
 import { PollerService } from "@/services/poller-service";
 import { handleKaggleOAuthCallback } from "@/services/native-oauth-service";
+import { getEmbeddedFile } from "./embedded-assets";
 import { registerAccountRoutes } from "./account-routes";
 import { registerAnalyticsRoutes } from "./analytics-routes";
 import { registerDatasetRoutes } from "./dataset-routes";
@@ -110,12 +111,13 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
   registerAnalyticsRoutes(app, analyticsService);
   registerSettingsRoutes(app, db);
 
-  // Serve static frontend build if present
+  // Serve static assets: 1st checks filesystem, 2nd checks embedded in-binary assets, 3rd SPA fallback
   const frontendDist = join(process.cwd(), "frontend", "dist");
   app.get("*", async (c) => {
     const urlPath = c.req.path === "/" ? "index.html" : c.req.path.slice(1);
     const filePath = join(frontendDist, urlPath);
 
+    // 1. Filesystem check
     if (existsSync(filePath)) {
       const ext = filePath.split(".").pop() ?? "";
       let contentType = "text/plain";
@@ -123,24 +125,39 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
       else if (ext === "js") contentType = "application/javascript";
       else if (ext === "css") contentType = "text/css";
       else if (ext === "svg") contentType = "image/svg+xml";
+      else if (ext === "webp") contentType = "image/webp";
       else if (ext === "json") contentType = "application/json";
 
-      const fileContent = readFileSync(filePath);
-      return new Response(fileContent, {
+      return new Response(readFileSync(filePath), {
         headers: { "Content-Type": contentType },
       });
     }
 
-    // SPA fallback
+    // 2. Embedded asset check (works inside compiled standalone binary anywhere!)
+    const embedded = getEmbeddedFile(urlPath);
+    if (embedded) {
+      return new Response(embedded.data, {
+        headers: { "Content-Type": embedded.contentType },
+      });
+    }
+
+    // 3. SPA Fallback: from filesystem
     const indexPath = join(frontendDist, "index.html");
     if (existsSync(indexPath)) {
-      const indexContent = readFileSync(indexPath);
-      return new Response(indexContent, {
+      return new Response(readFileSync(indexPath), {
         headers: { "Content-Type": "text/html" },
       });
     }
 
-    return c.text("Multi-Kaggle Backend Running. Frontend dist not found.", 200);
+    // 4. SPA Fallback: from embedded binary
+    const embeddedIndex = getEmbeddedFile("index.html");
+    if (embeddedIndex) {
+      return new Response(embeddedIndex.data, {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    return c.text("Multi-Kaggle Backend Running. No frontend assets available.", 200);
   });
 
   return { app, db, poller, accountService, kernelService, analyticsService };

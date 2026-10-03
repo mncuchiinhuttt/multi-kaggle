@@ -11,7 +11,8 @@
     "start": "bun run src/index.ts",
     "cli": "bun run src/cli/index.ts",
     "test": "bun test",
-    "build:frontend": "cd frontend && bun install && bun run build",
+    "build:frontend": "cd frontend && bun install && bun run build && cd .. && bun run scripts/generate-embedded-assets.ts",
+    "build:bin": "bun run build:frontend && bun build --compile ./src/cli/index.ts --outfile=./multikaggle",
     "build": "bun run build:frontend"
   },
   "dependencies": {
