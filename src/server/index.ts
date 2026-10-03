@@ -10,6 +10,7 @@ import { AccountService } from "@/services/account-service";
 import { AnalyticsService } from "@/services/analytics-service";
 import { KernelService } from "@/services/kernel-service";
 import { PollerService } from "@/services/poller-service";
+import { handleKaggleOAuthCallback } from "@/services/native-oauth-service";
 import { registerAccountRoutes } from "./account-routes";
 import { registerAnalyticsRoutes } from "./analytics-routes";
 import { registerDatasetRoutes } from "./dataset-routes";
@@ -61,6 +62,38 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
 
   // Health check
   app.get("/api/health", (c) => c.json({ status: "ok", version: "1.0.0" }));
+
+  // Intercept root GET when Kaggle redirects back with ?code=...&state=...
+  app.get("/", async (c, next) => {
+    const code = c.req.query("code");
+    const state = c.req.query("state");
+
+    if (code && state) {
+      const result = await handleKaggleOAuthCallback(code, state, accountService);
+      if (!result.ok) {
+        return c.html(`
+          <html><body style="font-family:sans-serif;padding:40px;background:#09090b;color:#fff;text-align:center;">
+            <h2 style="color:#ef4444;">Authentication Error</h2>
+            <p>${result.error}</p>
+            <a href="/" style="color:#f6821f;">Return to Dashboard</a>
+          </body></html>
+        `, 500);
+      }
+
+      return c.html(`
+        <html><body style="font-family:sans-serif;padding:40px;background:#09090b;color:#fff;text-align:center;">
+          <h2 style="color:#10b981;">Authentication Successful!</h2>
+          <p>Account <strong>@${result.username}</strong> has been added to Multi-Kaggle.</p>
+          <p>Redirecting to dashboard...</p>
+          <script>
+            setTimeout(() => { window.location.href = '/'; }, 1500);
+          </script>
+        </body></html>
+      `);
+    }
+
+    await next();
+  });
 
   // Register domain APIs
   registerAccountRoutes(app, accountService);

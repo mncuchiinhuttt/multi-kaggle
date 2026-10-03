@@ -25,12 +25,16 @@ function generateCodeChallenge(verifier: string): string {
 
 /**
  * Builds the direct Kaggle OAuth URL with PKCE for any browser.
+ * Kaggle strict whitelist requires redirect_uri to end with trailing slash: http://localhost:<port>/
  */
 export function buildKaggleOAuthUrl(host: string): { authUrl: string; state: string } {
-  const state = crypto.randomUUID();
+  // Generate high-entropy 32-byte state as required by Kaggle (min 32 chars)
+  const state = randomBytes(32).toString("base64url");
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
-  const redirectUri = `http://${host}/api/oauth/callback`;
+
+  // Kaggle whitelist allows: http://localhost:<port>/ or http://127.0.0.1:<port>/
+  const redirectUri = `http://${host}/`;
 
   activeSessions.set(state, {
     state,
