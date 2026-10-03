@@ -9,13 +9,14 @@ import { handleAccountsCommand, handleAddAccountCommand } from "./commands/accou
 import { handleJobsCommand, handleCancelCommand } from "./commands/jobs";
 import { handleOutputsCommand } from "./commands/outputs";
 import { handleDatasetsCommand } from "./commands/datasets";
-import { handleServeCommand } from "./commands/serve";
+import { handleServeCommand, runInteractiveTui } from "./commands/serve";
 
 const HELP_TEXT = `
 Multi-Kaggle CLI - Lightweight Kaggle multi-account manager & dispatcher
 
 Usage:
-  multikaggle [serve] [--port 7890] [--no-open]   Launch Web UI Dashboard & API daemon
+  multikaggle                                     Launch Interactive TUI Menu
+  multikaggle serve [--port 7890] [--no-open]     Launch Web UI Server directly
   multikaggle run <file.ipynb|file.py> [options]  Dispatch notebook to Kaggle
   multikaggle outputs <job_id> [--download <dir>] Inspect or download outputs from a run
   multikaggle datasets [list] [--search <term>]   List or search datasets across accounts
@@ -41,9 +42,16 @@ async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
-  if (!command || command === "serve" || command === "ui" || command === "web") {
+  // Default: When user runs bare 'multikaggle', show interactive TUI menu
+  if (!command) {
+    await runInteractiveTui(HELP_TEXT, 7890);
+    return;
+  }
+
+  // Explicit 'serve', 'ui', or 'web' runs server without interactive menu
+  if (command === "serve" || command === "ui" || command === "web") {
     const { values } = parseArgs({
-      args: command ? args.slice(1) : args,
+      args: args.slice(1),
       options: {
         port: { type: "string" },
         "no-open": { type: "boolean" },

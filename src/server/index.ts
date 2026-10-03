@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { TelegramNotifier } from "@/bot/notifier";
 import { createTelegramBot } from "@/bot/telegram-bot";
 import { initDatabase } from "@/db/database";
@@ -57,11 +56,20 @@ export function createApp(dbPath = "data/multi-kaggle.db") {
   }
 
   const app = new Hono();
-  app.use("*", logger());
   app.use("*", cors());
 
   // Health check
   app.get("/api/health", (c) => c.json({ status: "ok", version: "1.0.0" }));
+
+  // Graceful shutdown endpoint
+  app.post("/api/shutdown", (c) => {
+    setTimeout(() => {
+      poller.stop();
+      db.close();
+      process.exit(0);
+    }, 400);
+    return c.json({ ok: true, message: "Multi-Kaggle daemon shutting down gracefully." });
+  });
 
   // Intercept root GET when Kaggle redirects back with ?code=...&state=...
   app.get("/", async (c, next) => {
